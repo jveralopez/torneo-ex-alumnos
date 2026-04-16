@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+:root {
+  /* Football tournament color palette */
+  --color-primary: #166534; /* green-800 */
+  --color-primary-light: #22c55e; /* green-500 */
+  --color-accent: #fbbf24; /* amber-400 */
+  --color-dark: #0f172a; /* slate-900 */
+  --color-field: #16a34a; /* green-600 */
+  
+  font-family: Inter, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #0f172a;
+  background: #f0fdf4; /* green-50 */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0fdf4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #22c55e;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #166534;
+}
