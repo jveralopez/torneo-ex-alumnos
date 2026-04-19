@@ -109,6 +109,20 @@ export function clearTournamentCache(): void {
   cachedTournamentLoading = null
 }
 
+async function getDbRecordForAudit(supabase: ReturnType<typeof getSupabaseClient>, tableName: string, recordId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const { data } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('id', recordId)
+      .single()
+
+    return (data as Record<string, unknown>) || null
+  } catch {
+    return null
+  }
+}
+
 // Tournament
 export async function getTournaments(): Promise<Tournament[]> {
   const supabase = getSupabaseClient()
@@ -297,6 +311,7 @@ export async function updateTournament(id: string, data: Partial<Tournament>): P
   }
   
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'tournament', id)
   const tournamentDB = normalizeTournamentToDB(data)
   const { data: updated, error } = await supabase
     .from('tournament')
@@ -306,6 +321,16 @@ export async function updateTournament(id: string, data: Partial<Tournament>): P
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'tournament',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: tournamentDB,
+    description: `Actualizar torneo: ${updated.name}`,
+  })
+
   return normalizeTournamentFromDB([updated as Record<string, unknown>])[0]
 }
 
@@ -427,11 +452,21 @@ export async function createTeam(team: Partial<Team>): Promise<Team> {
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'team',
+    recordId: data.id,
+    action: 'create',
+    newValues: teamDB,
+    description: `Crear equipo: ${data.name}`,
+  })
+
   return normalizeTeamFromDB([data as Record<string, unknown>])[0]
 }
 
 export async function updateTeam(id: string, team: Partial<Team>): Promise<Team> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'team', id)
   const teamDB = normalizeTeamToDB(team)
   const { data, error } = await supabase
     .from('team')
@@ -441,47 +476,93 @@ export async function updateTeam(id: string, team: Partial<Team>): Promise<Team>
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'team',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: teamDB,
+    description: `Actualizar equipo: ${data.name}`,
+  })
+
   return normalizeTeamFromDB([data as Record<string, unknown>])[0]
 }
 
 export async function deleteTeam(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'team', id)
   const { error } = await supabase
     .from('team')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'team',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar equipo',
+  })
 }
 
 export async function deletePlayer(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'player', id)
   const { error } = await supabase
     .from('player')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'player',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar jugador',
+  })
 }
 
 export async function deleteMatchDay(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'match_day', id)
   const { error } = await supabase
     .from('match_day')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match_day',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar fecha',
+  })
 }
 
 export async function deleteMatch(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'match', id)
   const { error } = await supabase
     .from('match')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar partido',
+  })
 }
 
 // Normalizar Player de App (camelCase) a DB (snake_case)
@@ -551,6 +632,15 @@ export async function createPlayer(player: Partial<Player>): Promise<Player> {
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'player',
+    recordId: data.id,
+    action: 'create',
+    newValues: playerDB,
+    description: 'Crear jugador',
+  })
+
   return normalizePlayerFromDB([data as Record<string, unknown>])[0]
 }
 
@@ -582,6 +672,7 @@ export async function getPlayersByTournament(tournamentId: string): Promise<Play
 
 export async function updatePlayer(id: string, player: Partial<Player>): Promise<Player> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'player', id)
   const playerDB = normalizePlayerToDB(player)
   const { data, error } = await supabase
     .from('player')
@@ -591,6 +682,16 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'player',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: playerDB,
+    description: 'Actualizar jugador',
+  })
+
   return normalizePlayerFromDB([data as Record<string, unknown>])[0]
 }
 
@@ -665,11 +766,21 @@ export async function createMatchDay(matchDay: Partial<MatchDay>): Promise<Match
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match_day',
+    recordId: data.id,
+    action: 'create',
+    newValues: matchDayDB,
+    description: `Crear fecha ${data.number}`,
+  })
+
   return normalizeMatchDayFromDB([data as Record<string, unknown>])[0]
 }
 
 export async function updateMatchDay(id: string, matchDay: Partial<MatchDay>): Promise<MatchDay> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'match_day', id)
   const matchDayDB = normalizeMatchDayToDB(matchDay)
   const { data, error } = await supabase
     .from('match_day')
@@ -679,6 +790,16 @@ export async function updateMatchDay(id: string, matchDay: Partial<MatchDay>): P
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match_day',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: matchDayDB,
+    description: `Actualizar fecha ${data.number}`,
+  })
+
   return normalizeMatchDayFromDB([data as Record<string, unknown>])[0]
 }
 
@@ -730,6 +851,7 @@ export async function getMatchById(id: string): Promise<Match | null> {
 
 export async function updateMatch(id: string, match: Partial<Match>): Promise<Match> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'match', id)
   const matchDB = normalizeMatchToDB(match)
   
   // Obtener el partido actual para saber si está cambiando a "jugado"
@@ -747,6 +869,15 @@ export async function updateMatch(id: string, match: Partial<Match>): Promise<Ma
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: matchDB,
+    description: 'Actualizar partido',
+  })
   
   // Si el partido pasa a "jugado" y no lo estaba antes, actualizar sanciones
   if (match.status === 'jugado' && currentMatch && currentMatch.status !== 'jugado') {
@@ -873,6 +1004,15 @@ export async function createMatch(match: Partial<Match>): Promise<Match> {
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'match',
+    recordId: data.id,
+    action: 'create',
+    newValues: matchDB,
+    description: 'Crear partido',
+  })
+
   return normalizeMatchFromDB([data as Record<string, unknown>])[0]
 }
 
@@ -975,6 +1115,14 @@ export async function createGoal(goal: Partial<Goal>): Promise<Goal> {
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'goal',
+    recordId: data.id,
+    action: 'create',
+    newValues: goalDB,
+    description: 'Crear gol',
+  })
   
   // Normalizar respuesta
   return {
@@ -989,12 +1137,21 @@ export async function createGoal(goal: Partial<Goal>): Promise<Goal> {
 
 export async function deleteGoal(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'goal', id)
   const { error } = await supabase
     .from('goal')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'goal',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar gol',
+  })
 }
 
 export async function getTopScorers(_tournamentId: string): Promise<Array<Goal & { player: Player; team: Team }>> {
@@ -1920,6 +2077,14 @@ export async function createCard(card: Partial<Card>): Promise<Card> {
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'card',
+    recordId: data.id,
+    action: 'create',
+    newValues: cardDB,
+    description: `Crear tarjeta ${data.type}`,
+  })
   
   // After creating the card, check if player should be automatically suspended
   if (data) {
@@ -1940,12 +2105,21 @@ export async function createCard(card: Partial<Card>): Promise<Card> {
 
 export async function deleteCard(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'card', id)
   const { error } = await supabase
     .from('card')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'card',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar tarjeta',
+  })
 }
 
 // Get all yellow cards for a tournament grouped by player
@@ -2176,6 +2350,14 @@ export async function createSanction(sanction: Partial<Sanction>): Promise<Sanct
     console.error('Error creating sanction:', error)
     throw error
   }
+
+  await createAuditLog({
+    tableName: 'sanction',
+    recordId: data.id,
+    action: 'create',
+    newValues: sanctionDB,
+    description: 'Crear sanción',
+  })
   
   // Normalizar respuesta de snake_case a camelCase
   return {
@@ -2299,6 +2481,7 @@ async function checkAndCreateAutomaticSanction(playerId: string, cardType: 'amar
 
 export async function updateSanction(id: string, sanction: Partial<Sanction>): Promise<Sanction> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'sanction', id)
   const { data, error } = await supabase
     .from('sanction')
     .update(sanction)
@@ -2307,17 +2490,36 @@ export async function updateSanction(id: string, sanction: Partial<Sanction>): P
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'sanction',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: sanction as Record<string, unknown>,
+    description: 'Actualizar sanción',
+  })
+
   return data
 }
 
 export async function deleteSanction(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'sanction', id)
   const { error } = await supabase
     .from('sanction')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'sanction',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar sanción',
+  })
 }
 
 // Función para limpiar TODOS los datos de planilla (goles, tarjetas, sanciones)
@@ -2338,6 +2540,14 @@ export async function clearAllMatchData(): Promise<{ goalsDeleted: number; cards
   
   // Poner todos los partidos como "programado"
   await supabase.from('match').update({ status: 'programado' }).neq('status', 'programado')
+
+  await createAuditLog({
+    tableName: 'match',
+    recordId: '00000000-0000-0000-0000-000000000000',
+    action: 'update',
+    newValues: { status: 'programado' },
+    description: 'Limpiar datos de planilla (bulk) y resetear partidos a programado',
+  })
   
   return {
     goalsDeleted: goalsCount || 0,
@@ -2610,11 +2820,21 @@ export async function createDocument(doc: Partial<Document>): Promise<Document> 
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'document',
+    recordId: data.id,
+    action: 'create',
+    newValues: doc as Record<string, unknown>,
+    description: 'Crear documento',
+  })
+
   return data
 }
 
 export async function updateDocument(id: string, doc: Partial<Document>): Promise<Document> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'document', id)
   const { data, error } = await supabase
     .from('document')
     .update(doc)
@@ -2623,17 +2843,36 @@ export async function updateDocument(id: string, doc: Partial<Document>): Promis
     .single()
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'document',
+    recordId: id,
+    action: 'update',
+    oldValues: oldValues || undefined,
+    newValues: doc as Record<string, unknown>,
+    description: 'Actualizar documento',
+  })
+
   return data
 }
 
 export async function deleteDocument(id: string): Promise<void> {
   const supabase = getSupabaseClient()
+  const oldValues = await getDbRecordForAudit(supabase, 'document', id)
   const { error } = await supabase
     .from('document')
     .delete()
     .eq('id', id)
   
   if (error) throw error
+
+  await createAuditLog({
+    tableName: 'document',
+    recordId: id,
+    action: 'delete',
+    oldValues: oldValues || undefined,
+    description: 'Eliminar documento',
+  })
 }
 
 
