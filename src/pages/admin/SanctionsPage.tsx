@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
 import { Input, Select } from '../../components/ui'
-import { getTeams, getPlayers, getActiveSanctions, createSanction, updateSanction, deleteSanction, getActiveTournament } from '../../services/database'
+import { getTeams, getPlayers, getActiveSanctions, createSanction, updateSanction, deleteSanction, getActiveTournament, fixSanctionsManualV2 } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
 import type { Team, Sanction, Player, SanctionStatus, SanctionOrigin } from '../../types/domain'
 
@@ -14,6 +14,8 @@ export function SanctionsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingSanction, setEditingSanction] = useState<Sanction | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   // Get tournament for threshold
   const { data: tournament } = useQuery({
@@ -48,12 +50,18 @@ export function SanctionsPage() {
     queryFn: () => getActiveSanctions(),
   })
 
-  const createMutation = useMutation({
+const createMutation = useMutation({
     mutationFn: createSanction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeSanctions'] })
-      queryClient.invalidateQueries({ queryKey: ['allPlayers'] }) // Update yellow cards counts
+      queryClient.invalidateQueries({ queryKey: ['allPlayers'] })
       setShowForm(false)
+      setSuccessMessage('Sanción creada correctamente')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    },
+    onError: (err: Error) => {
+      setErrorMessage(err.message)
+      setTimeout(() => setErrorMessage(''), 5000)
     },
   })
 
@@ -64,6 +72,12 @@ export function SanctionsPage() {
       queryClient.invalidateQueries({ queryKey: ['activeSanctions'] })
       setEditingSanction(null)
       setShowForm(false)
+      setSuccessMessage('Sanción actualizada correctamente')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    },
+    onError: (err: Error) => {
+      setErrorMessage(err.message)
+      setTimeout(() => setErrorMessage(''), 5000)
     },
   })
 
@@ -105,6 +119,16 @@ export function SanctionsPage() {
 
   return (
     <section>
+      {successMessage && (
+        <div className="mb-4 rounded-lg bg-green-100 border border-green-400 p-3 text-sm text-green-800 font-medium">
+          {successMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="mb-4 rounded-lg bg-red-100 border border-red-400 p-3 text-sm text-red-800 font-medium">
+          {errorMessage}
+        </div>
+      )}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-white">Sanciones</h1>
@@ -185,6 +209,37 @@ export function SanctionsPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             options={statusOptions}
           />
+          
+          {/* Botón de corrección de sanciones */}
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                if (!tournamentId) return
+                setErrorMessage('')
+                setSuccessMessage('')
+                try {
+                  console.log('🔧 Calling fixSanctionsManual with tournamentId:', tournamentId)
+                  const result = await fixSanctionsManualV2(tournamentId)
+                  console.log('🔧 Result:', result)
+                  
+                  if (result.fixed > 0) {
+                    const detailsText = result.details.map(d => `${d.team}: ${d.from} -> ${d.to}`).join(', ')
+                    setSuccessMessage(`✅ Corregidas ${result.fixed} sanciones: ${detailsText}`)
+                  } else {
+                    setSuccessMessage('ℹ️ No había sanciones que corregir')
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['activeSanctions'] })
+                } catch (err: any) {
+                  console.error('🔧 Error:', err)
+                  setErrorMessage('Error: ' + err.message)
+                }
+              }}
+            >
+              🔧 Corregir Sanciones
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

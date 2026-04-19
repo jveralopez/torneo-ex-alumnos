@@ -1,5 +1,6 @@
 export { Button } from './Button'
 export { Input } from './Input'
 export { Select } from './Select'
-export { Card, CardHeader, CardContent, CardFooter } from './Card'
+export { Checkbox } from './Checkbox'
+export { Card, CardHeader, CardContent, CardFooter, NoticeBadge } from './Card'
 export { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from './Table'

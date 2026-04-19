@@ -18,12 +18,17 @@ export function StandingsPage() {
     queryKey: ['allPlayedMatches', tournamentId],
     queryFn: () => getAllPlayedMatchesWithTeams(tournamentId!),
     enabled: !!tournamentId,
+    staleTime: 60000, // 1 minuto de cache
   })
 
+  console.log('DEBUG StandingsPage - tournamentId:', tournamentId)
+  console.log('DEBUG StandingsPage - matches:', matches)
+  
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ['teams', tournamentId],
     queryFn: () => getTeams(tournamentId!),
     enabled: !!tournamentId,
+    staleTime: 60000,
   })
 
   const standings = useMemo(() => {
@@ -67,17 +72,30 @@ export function StandingsPage() {
       awayEntry.goalsFor += awayGoals
       awayEntry.goalsAgainst += homeGoals
 
+      // Check if it was a no-show (0-3 with "no presentó" in notes)
+      const isNoShowLocal = homeGoals === 0 && awayGoals === 3 && match.notes?.toLowerCase().includes('no se presentó') && match.notes?.toLowerCase().includes('local')
+      const isNoShowVisita = homeGoals === 3 && awayGoals === 0 && match.notes?.toLowerCase().includes('no se presentó') && match.notes?.toLowerCase().includes('visita')
+
       // Determine result
       if (homeGoals > awayGoals) {
         // Home win
         homeEntry.won += 1
         homeEntry.points += POINTS_WIN
-        awayEntry.lost += 1
-        awayEntry.points += POINTS_LOSS
+        // Away didn't show (3-0 with "visita no se presentó")
+        if (isNoShowVisita) {
+          // No-show: no points, no loss recorded
+        } else {
+          awayEntry.lost += 1
+          awayEntry.points += POINTS_LOSS
+        }
       } else if (homeGoals < awayGoals) {
-        // Away win
-        homeEntry.lost += 1
-        homeEntry.points += POINTS_LOSS
+        // Away win - check if home team didn't show
+        if (isNoShowLocal) {
+          // Local no-show: no points, no loss recorded
+        } else {
+          homeEntry.lost += 1
+          homeEntry.points += POINTS_LOSS
+        }
         awayEntry.won += 1
         awayEntry.points += POINTS_WIN
       } else {
@@ -101,15 +119,15 @@ export function StandingsPage() {
       return b.goalsFor - a.goalsFor
     })
 
-    // Filter out teams with no matches played
-    const filtered = sorted.filter(entry => entry.played > 0)
+    // NO filtrar equipos sin partidos - mostrar todos
+    // const filtered = sorted.filter(entry => entry.played > 0)
 
-    // Assign positions
-    filtered.forEach((entry, index) => {
+    // Asignar posiciones a todos
+    sorted.forEach((entry, index) => {
       entry.position = index + 1
     })
 
-    return filtered
+    return sorted
   }, [teams, matches])
 
   const isLoading = matchesLoading || teamsLoading
@@ -127,7 +145,7 @@ export function StandingsPage() {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Tabla de Posiciones</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
-          No hay partidos jugados todavía. La tabla aparecerá una vez que se disputen los partidos.
+          No hay equipos registrados en el torneo.
         </p>
       </section>
     )

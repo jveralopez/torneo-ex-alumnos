@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader } from '../../components/ui'
-import { getActiveTournament, getNextMatchDay, getMatches, getTeams, getRecentPlayedMatches, getPublicSanctions } from '../../services/database'
+import { Card, CardContent, CardHeader, NoticeBadge } from '../../components/ui'
+import { getActiveTournament, getNextMatchDay, getMatches, getTeams, getRecentPlayedMatches, getPublicSanctions, getActiveNews } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
 import { appRoutes } from '../../utils/routes'
-import type { Match, Team } from '../../types/domain'
+import type { Match, Team, News } from '../../types/domain'
 
 export function HomePage() {
   const { tournamentId } = useTournamentId()
@@ -14,17 +14,22 @@ export function HomePage() {
     queryFn: getActiveTournament,
   })
 
+const { data: teams = [] } = useQuery({
+    queryKey: ['teams', tournamentId],
+    queryFn: () => getTeams(tournamentId!),
+    enabled: !!tournamentId,
+  })
+
   const { data: nextMatchDay } = useQuery({
     queryKey: ['nextMatchDay', tournamentId],
     queryFn: () => getNextMatchDay(tournamentId!),
     enabled: !!tournamentId,
   })
 
-  const { data: teams = [] } = useQuery({
-    queryKey: ['teams', tournamentId],
-    queryFn: () => getTeams(tournamentId!),
-    enabled: !!tournamentId,
-  })
+  // Obtener nombre del equipo libre si existe
+  const freeTeamName = nextMatchDay?.freeTeamId 
+    ? teams.find((t: Team) => t.id === nextMatchDay.freeTeamId)?.name 
+    : null
 
   const { data: nextMatches = [] } = useQuery({
     queryKey: ['nextMatches', nextMatchDay?.id],
@@ -44,7 +49,13 @@ export function HomePage() {
     enabled: !!tournamentId,
   })
 
-  const isLoading = !tournamentId
+  const { data: news = [] } = useQuery({
+    queryKey: ['activeNews', tournamentId],
+    queryFn: () => getActiveNews(tournamentId ?? undefined),
+    staleTime: 0,
+  })
+
+  const isContentLoading = !tournamentId
 
   const getTeamName = (teamId: string) => {
     const team = teams.find((t: Team) => t.id === teamId)
@@ -54,16 +65,18 @@ export function HomePage() {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return ''
     const date = new Date(dateStr)
+    date.setHours(date.getHours() + 3) // Ajustar timezone
     return date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return ''
     const date = new Date(dateStr)
+    date.setHours(date.getHours() + 3) // Ajustar timezone
     return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
   }
 
-  if (isLoading) {
+  if (isContentLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
@@ -73,6 +86,42 @@ export function HomePage() {
 
   return (
     <section className="space-y-8">
+      {/* Avisos / Noticias - siempre muestra si hay news */}
+      {news.length > 0 && (
+        <div className="space-y-3">
+          {news.map((notice: News) => (
+            <Link
+              key={notice.id}
+              to={notice.link || '#'}
+              className={`block rounded-xl border p-4 transition-all hover:shadow-lg ${
+                notice.type === 'urgent'
+                  ? 'border-red-200 bg-red-50 hover:border-red-400'
+                  : notice.type === 'warning'
+                  ? 'border-yellow-200 bg-yellow-50 hover:border-yellow-400'
+                  : notice.type === 'success'
+                  ? 'border-green-200 bg-green-50 hover:border-green-400'
+                  : 'border-blue-200 bg-blue-50 hover:border-blue-400'
+              }`}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <NoticeBadge type={notice.type} />
+                  <div>
+                    <h3 className="font-bold text-slate-800">{notice.title}</h3>
+                    <p className="text-sm text-slate-600">{notice.message}</p>
+                  </div>
+                </div>
+                {notice.link && (
+                  <span className="text-sm font-medium text-blue-600 hover:underline">
+                    {notice.linkLabel || 'Ver más →'}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* Banner / Header - Football field style */}
       {tournament && (
         <div className="relative overflow-hidden rounded-[2rem] border border-green-300 bg-gradient-to-br from-green-800 via-green-700 to-green-900 px-6 py-12 text-white shadow-2xl shadow-green-500/30 sm:px-8">
@@ -135,6 +184,14 @@ export function HomePage() {
                     </div>
                   </div>
                 ))}
+                {/* Equipo Libre */}
+                {freeTeamName && (
+                  <div className="flex items-center justify-center px-6 py-3 bg-yellow-50 border-t border-yellow-100">
+                    <span className="text-sm font-semibold text-yellow-700">
+                      Libre: {freeTeamName}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -208,16 +265,26 @@ export function HomePage() {
               </div>
             ) : (
               <div className="max-h-48 overflow-y-auto divide-y divide-green-100">
-                {activeSanctions.slice(0, 5).map((sanction) => (
+                {activeSanctions.slice(0, 5).map((sanction: any) => (
                   <div key={sanction.id} className="px-4 py-3 hover:bg-green-50 transition-colors">
                     <p className="text-sm font-semibold text-slate-800">
-                      {sanction.reason}
+                      {sanction.playerName}
                     </p>
                     <p className="text-xs text-green-600 font-medium mt-1">
-                      ⏱️ {sanction.matchesServed}/{sanction.totalMatches} partidos cumplidos
+                      {sanction.teamName} · {sanction.matchesServed}/{sanction.totalMatches} partidos
                     </p>
                   </div>
                 ))}
+                {activeSanctions.length > 5 && (
+                  <div className="px-4 py-3 text-center">
+                    <Link
+                      to={appRoutes.publicSanctions}
+                      className="text-sm font-semibold text-green-600 hover:text-green-800 hover:underline"
+                    >
+                      Ver todos ({activeSanctions.length}) →
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

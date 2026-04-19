@@ -16,6 +16,7 @@ import { MatchCardsPage } from '../pages/admin/MatchCardsPage'
 import { MatchReportPage } from '../pages/admin/MatchReportPage'
 import { SanctionsPage } from '../pages/admin/SanctionsPage'
 import { DocumentsPage } from '../pages/admin/DocumentsPage'
+import { NewsPage } from '../pages/admin/NewsPage'
 import { SettingsPage } from '../pages/admin/SettingsPage'
 import { HomePage } from '../pages/public/HomePage'
 import { FixturePage } from '../pages/public/FixturePage'
@@ -79,6 +80,9 @@ export function AppRouter() {
         
         {/* Documentos */}
         <Route path="documentos" element={<DocumentsPage />} />
+        
+        {/* Noticias */}
+        <Route path="noticias" element={<NewsPage />} />
         
         {/* Configuración */}
         <Route path="configuracion" element={<SettingsPage />} />

@@ -8,6 +8,26 @@ export type AdminRole = 'admin' | 'carga_datos'
 export type TournamentStatus = 'borrador' | 'activo' | 'finalizado'
 export type DocumentType = 'reglamento' | 'acta' | 'convocatoria' | 'otro'
 export type SanctionOrigin = 'roja' | 'acumulacion_amarillas' | 'amarillas_consecutivas' | 'manual'
+export type NewsType = 'info' | 'warning' | 'success' | 'urgent'
+
+// News (Noticias/Avisos)
+export interface News {
+  id: string
+  tournamentId: string | null
+  title: string
+  message: string
+  type: NewsType
+  link: string | null
+  linkLabel: string | null
+  active: boolean
+  publishedAt: string
+  createdAt: string
+  updatedAt: string
+  // DB columns (snake_case)
+  tournament_id?: string
+  link_label?: string
+  published_at?: string
+}
 
 // Tournament
 export interface Tournament {
@@ -17,12 +37,18 @@ export interface Tournament {
   description: string | null
   status: TournamentStatus
   regulationUrl: string | null
+  // Habilitar equipo "LIBRE" en partidos
+  libreTeamEnabled: boolean
   // Suspensión por amarillas (no consecutivas)
   yellowCardSuspensionThreshold: number
   // Suspensión por 2 amarillas consecutivas
   consecutiveYellowSuspension: number
   // Suspensión por tarjeta roja (partidos)
   redCardSuspensionMatches: number
+  // DB columns (snake_case)
+  yellow_card_suspension_threshold?: number
+  consecutive_yellow_suspension?: number
+  red_card_suspension_matches?: number
   createdAt: string
   updatedAt: string
 }
@@ -60,9 +86,9 @@ export interface MatchDay {
   tournamentId: string
   number: number
   title: string | null
-  visiblePublicly: boolean
   published: boolean
   referenceDate: string | null
+  freeTeamId: string | null  // Equipo que no juega esta jornada
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -72,6 +98,7 @@ export interface MatchDay {
 export interface Match {
   id: string
   matchDayId: string
+  matchDayNumber?: string | number | null
   homeTeamId: string
   awayTeamId: string
   scheduledAt: string | null
@@ -115,6 +142,7 @@ export interface Sanction {
   matchesServed: number
   status: SanctionStatus
   origin: SanctionOrigin | null
+  originMatchDay?: string | null
   notes: string | null
   createdAt: string
   updatedAt: string

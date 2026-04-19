@@ -14,15 +14,17 @@ export function Select({
   id,
   ...props
 }: SelectProps) {
+  const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
+  
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={id} className="block text-sm font-semibold text-green-800">
+        <label htmlFor={selectId} className="block text-sm font-semibold text-green-800">
           {label}
         </label>
       )}
       <select
-        id={id}
+        id={selectId}
         className={`
           mt-1 block w-full rounded-xl border-2 px-4 py-2.5 text-slate-900
           focus:outline-none focus:ring-2 transition-all

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
 import { getTeams, getPlayers, getPublicSanctions } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
-import type { Team, Player, Sanction } from '../../types/domain'
+import type { Team, Player } from '../../types/domain'
 
 export function PublicSanctionsPage() {
   const { tournamentId } = useTournamentId()
@@ -82,7 +82,7 @@ export function PublicSanctionsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {sanctions.map((sanction: Sanction) => (
+                {(sanctions as any[]).map((sanction) => (
                   <TableRow key={sanction.id}>
                     <TableCell className="font-medium text-slate-900">
                       {getPlayerName(sanction.playerId)}
@@ -97,8 +97,8 @@ export function PublicSanctionsPage() {
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {sanction.origin === 'roja' ? 'Tarjeta Roja' : 
-                         sanction.origin === 'acumulacion_amarillas' ? 'Acumulación' : 'Manual'}
+                        {sanction.originMatchDay || (sanction.origin === 'roja' ? 'Tarjeta Roja' : 
+                         sanction.origin === 'acumulacion_amarillas' ? 'Acumulación' : 'Manual')}
                       </span>
                     </TableCell>
                     <TableCell>{sanction.totalMatches}</TableCell>

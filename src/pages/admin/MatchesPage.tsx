@@ -16,6 +16,8 @@ export function MatchesPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const { tournamentId } = useTournamentId()
 
   const { data: matchDays = [] } = useQuery({
@@ -33,8 +35,9 @@ export function MatchesPage() {
   })
 
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
-    queryFn: () => getTeams('current-tournament'),
+    queryKey: ['teams', tournamentId],
+    queryFn: () => getTeams(tournamentId!),
+    enabled: !!tournamentId,
   })
 
   const createMutation = useMutation({
@@ -42,6 +45,13 @@ export function MatchesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches', matchDayId] })
       setShowForm(false)
+      setSuccess('Partido creado correctamente')
+      setError('')
+    },
+    onError: (err: Error) => {
+      console.error('Error creating match:', err)
+      setError(err.message)
+      setSuccess('')
     },
   })
 
@@ -51,6 +61,13 @@ export function MatchesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches', matchDayId] })
       setEditingId(null)
+      setSuccess('Partido actualizado correctamente')
+      setError('')
+    },
+    onError: (err: Error) => {
+      console.error('Error updating match:', err)
+      setError(err.message)
+      setSuccess('')
     },
   })
 
@@ -85,13 +102,25 @@ export function MatchesPage() {
       </div>
 
       {showForm && (
-        <MatchForm
-          teams={teams}
-          matchDayId={matchDayId!}
-          onClose={() => setShowForm(false)}
-          onSubmit={(data) => createMutation.mutate(data as Parameters<typeof createMatch>[0])}
-          isLoading={createMutation.isPending}
-        />
+        <>
+          {success && (
+            <div className="mb-4 rounded-lg bg-green-900/50 p-3 text-sm text-green-200">
+              {success}
+            </div>
+          )}
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-900/50 p-3 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+          <MatchForm
+            teams={teams}
+            matchDayId={matchDayId!}
+            onClose={() => { setShowForm(false); setError(''); setSuccess('') }}
+            onSubmit={(data) => createMutation.mutate(data as Parameters<typeof createMatch>[0])}
+            isLoading={createMutation.isPending}
+          />
+        </>
       )}
 
       <Card>
@@ -122,9 +151,13 @@ export function MatchesPage() {
                     <TableCell>{getTeamName(match.awayTeamId)}</TableCell>
                     <TableCell>
                       {match.scheduledAt 
-                        ? new Date(match.scheduledAt).toLocaleString('es-AR', { 
-                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-                          })
+                        ? (() => {
+                            const date = new Date(match.scheduledAt)
+                            date.setHours(date.getHours() + 3)
+                            return date.toLocaleString('es-AR', { 
+                              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                            })
+                          })()
                         : '-'
                       }
                     </TableCell>
@@ -225,7 +258,13 @@ function MatchForm({
     })
   }
 
-  const teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
+  const libreTeam = teams.find(t => t.name === 'LIBRE')
+  let teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
+  // Always show LIBRE as option (filter out the actual LIBRE team from list to avoid duplicates)
+  teamOptions = teamOptions.filter(t => t.label !== 'LIBRE')
+  if (libreTeam) {
+    teamOptions = [{ value: libreTeam.id, label: 'LIBRE (Partido no jugado)' }, ...teamOptions]
+  }
 
   return (
     <Card className="mb-6">
@@ -328,7 +367,14 @@ function MatchFormEdit({
     })
   }
 
-  const teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
+  const libreTeam = teams.find(t => t.name === 'LIBRE')
+  let teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
+  // Always show LIBRE as option
+  teamOptions = teamOptions.filter(t => t.label !== 'LIBRE')
+  if (libreTeam) {
+    teamOptions = [{ value: libreTeam.id, label: 'LIBRE (Partido no jugado)' }, ...teamOptions]
+  }
+
   const statusOptions = [
     { value: 'programado', label: 'Programado' },
     { value: 'reprogramado', label: 'Reprogramado' },

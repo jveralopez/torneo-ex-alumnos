@@ -66,9 +66,9 @@ export const demoMatchDays: MatchDay[] = Array.from({ length: 10 }, (_, i) => ({
   tournamentId: 'demo-tournament',
   number: i + 1,
   title: `Fecha ${i + 1}`,
-  visiblePublicly: true,
   published: true,
   referenceDate: new Date(Date.now() + (i - 4) * 7 * 24 * 60 * 60 * 1000).toISOString(),
+  freeTeamId: null,
   notes: i < 4 ? `Fecha disputada` : `Fecha programada`,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -293,6 +293,7 @@ export const demoTournament: Tournament = {
   description: 'Torneo anual de fútbol 7 entre ex-alumnos del Colegio. ¡La competencia más esperada del año!',
   status: 'activo',
   regulationUrl: null,
+  libreTeamEnabled: false,
   yellowCardSuspensionThreshold: 4,  // 4 amarillas no consecutivas = 1 fecha
   consecutiveYellowSuspension: 2,    // 2 amarillas consecutivas = 1 fecha
   redCardSuspensionMatches: 2,        // Roja directa = 2 fechas
@@ -306,7 +307,7 @@ export function getDemoMatchDays() {
 }
 
 export function getDemoVisibleMatchDays() {
-  return demoMatchDays.filter(m => m.visiblePublicly)
+  return demoMatchDays.filter(m => m.published)
 }
 
 export function getDemoPublishedMatchDays() {

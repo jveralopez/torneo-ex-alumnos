@@ -47,3 +47,38 @@ export function CardFooter({ children, className = '' }: CardFooterProps) {
     </div>
   )
 }
+
+// Notice Badge component
+interface NoticeBadgeProps {
+  type: 'info' | 'warning' | 'success' | 'urgent'
+}
+
+export function NoticeBadge({ type }: NoticeBadgeProps) {
+  const styles = {
+    info: 'bg-blue-100 text-blue-800 border-blue-200',
+    warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    success: 'bg-green-100 text-green-800 border-green-200',
+    urgent: 'bg-red-100 text-red-800 border-red-200',
+  }
+  
+  const icons = {
+    info: '📢',
+    warning: '⚠️',
+    success: '✅',
+    urgent: '🚨',
+  }
+  
+  const labels = {
+    info: 'Info',
+    warning: 'Aviso',
+    success: 'OK',
+    urgent: 'Urgente',
+  }
+  
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${styles[type]}`}>
+      <span>{icons[type]}</span>
+      <span>{labels[type]}</span>
+    </span>
+  )
+}

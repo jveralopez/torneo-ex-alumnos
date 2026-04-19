@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader } from '../../components/ui'
 import { getPlayedMatches, getTeams } from '../../services/database'
@@ -23,6 +24,31 @@ export function ResultsPage() {
     const team = teams.find(t => t.id === teamId)
     return team?.name || 'Equipo'
   }
+
+  // Agrupar partidos por fecha
+  const matchesByDate = useMemo(() => {
+    const grouped = new Map<string | number, Match[]>()
+    
+    matches.forEach((match: Match) => {
+      const dateKey = match.matchDayNumber ?? match.matchDayId
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, [])
+      }
+      grouped.get(dateKey)!.push(match)
+    })
+    
+    // Ordenar por número de fecha
+    const sortedKeys = Array.from(grouped.keys()).sort((a, b) => {
+      const numA = typeof a === 'number' ? a : 0
+      const numB = typeof b === 'number' ? b : 0
+      return numA - numB
+    })
+    
+    return sortedKeys.map(key => ({
+      dateNumber: key,
+      matches: grouped.get(key)!
+    }))
+  }, [matches])
 
   if (isLoading) {
     return (
@@ -57,22 +83,29 @@ export function ResultsPage() {
           <span className="font-medium">Partidos ({matches.length})</span>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-slate-100">
-            {matches.map((match: Match) => (
-              <div key={match.id} className="flex items-center justify-between px-6 py-4">
-                <div className="flex flex-1 items-center justify-end gap-3">
-                  <span className="text-right font-medium text-slate-900">{getTeamName(match.homeTeamId)}</span>
-                  <span className="w-8 text-center text-slate-400">vs</span>
-                  <span className="text-left font-medium text-slate-900">{getTeamName(match.awayTeamId)}</span>
-                </div>
-                <div className="ml-6 flex min-w-[100px] items-center justify-center">
-                  <span className="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">
-                    {match.homeGoals} - {match.awayGoals}
-                  </span>
-                </div>
+          {matchesByDate.map(({ dateNumber, matches }) => (
+            <div key={dateNumber as string} className="border-b border-slate-100 last:border-0">
+              <div className="bg-slate-50 px-6 py-2 text-sm font-semibold text-slate-600">
+                Fecha {dateNumber}
               </div>
-            ))}
-          </div>
+              <div className="divide-y divide-slate-100">
+                {matches.map((match: Match) => (
+                  <div key={match.id} className="flex items-center justify-between px-6 py-4">
+                    <div className="flex flex-1 items-center justify-end gap-3">
+                      <span className="text-right font-medium text-slate-900">{getTeamName(match.homeTeamId)}</span>
+                      <span className="w-8 text-center text-slate-400">vs</span>
+                      <span className="text-left font-medium text-slate-900">{getTeamName(match.awayTeamId)}</span>
+                    </div>
+                    <div className="ml-6 flex min-w-[100px] items-center justify-center">
+                      <span className="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">
+                        {match.homeGoals} - {match.awayGoals}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </section>

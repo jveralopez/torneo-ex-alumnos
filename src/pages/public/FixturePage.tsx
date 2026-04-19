@@ -57,6 +57,7 @@ export function FixturePage() {
           key={matchDay.id}
           matchDay={matchDay}
           getTeamName={getTeamName}
+          teams={teams}
         />
       ))}
     </section>
@@ -66,9 +67,11 @@ export function FixturePage() {
 function MatchDaySection({
   matchDay,
   getTeamName,
+  teams,
 }: {
   matchDay: MatchDay
   getTeamName: (teamId: string) => string
+  teams: { id: string; name: string }[]
 }) {
   const { data: matches = [], isLoading } = useQuery({
     queryKey: ['matches', matchDay.id],
@@ -76,21 +79,30 @@ function MatchDaySection({
     enabled: !!matchDay.id,
   })
 
+  const freeTeam = teams.find(t => t.id === matchDay.freeTeamId)
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold">
-            Fecha {matchDay.number}
-            {matchDay.title && <span className="ml-2 font-normal text-slate-500">- {matchDay.title}</span>}
-          </span>
-          {matchDay.referenceDate && (
-            <span className="text-sm text-slate-500">
-              {new Date(matchDay.referenceDate).toLocaleDateString('es-AR', {
-                day: '2-digit',
-                month: 'long',
-              })}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">
+              Fecha {matchDay.number}
+              {matchDay.title && <span className="ml-2 font-normal text-slate-500">- {matchDay.title}</span>}
             </span>
+            {matchDay.referenceDate && (
+              <span className="text-sm text-slate-500">
+                {new Date(matchDay.referenceDate).toLocaleDateString('es-AR', {
+                  day: '2-digit',
+                  month: 'long',
+                })}
+              </span>
+            )}
+          </div>
+          {freeTeam && (
+            <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2 text-sm text-yellow-700">
+              <span className="font-medium">No juega:</span> {freeTeam.name}
+            </div>
           )}
         </div>
       </CardHeader>
@@ -123,28 +135,42 @@ function MatchRow({
   getTeamName: (teamId: string) => string
 }) {
   const isPlayed = match.status === 'jugado'
+  const hasTeams = match.homeTeamId && match.awayTeamId
+
+  // Si no hay equipos, mostrar mensaje
+  if (!hasTeams) {
+    return (
+      <div className="flex items-center justify-center px-6 py-4 text-slate-400">
+        <span>Partido por configurar</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex items-center justify-between px-6 py-4">
-      <div className="flex flex-1 items-center justify-end gap-3">
-        <span className="text-right font-medium text-slate-900">{getTeamName(match.homeTeamId)}</span>
-        <span className="w-8 text-center text-slate-400">vs</span>
-        <span className="text-left font-medium text-slate-900">{getTeamName(match.awayTeamId)}</span>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-4">
+      {/* Equipo Local */}
+      <div className="flex items-center justify-end gap-3">
+        <span className="text-right font-medium text-slate-900 text-lg">
+          {getTeamName(match.homeTeamId)}
+        </span>
       </div>
 
-      <div className="ml-6 flex min-w-[100px] items-center justify-center">
+      {/* Resultado / Horario */}
+      <div className="flex items-center justify-center">
         {isPlayed ? (
-          <span className="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">
+          <span className="rounded-lg bg-green-100 px-4 py-2 text-xl font-bold text-green-800 min-w-[60px] text-center">
             {match.homeGoals} - {match.awayGoals}
           </span>
         ) : match.scheduledAt ? (
-          <span className="text-sm text-slate-500">
-            {new Date(match.scheduledAt).toLocaleString('es-AR', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+          <span className="rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700">
+            {(function() {
+              const date = new Date(match.scheduledAt)
+              date.setHours(date.getHours() + 3)
+              return date.toLocaleString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            })()}
           </span>
         ) : match.status === 'suspendido' ? (
           <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
@@ -155,11 +181,12 @@ function MatchRow({
         )}
       </div>
 
-      {match.venue && (
-        <span className="ml-4 min-w-[120px] text-right text-sm text-slate-500">
-          {match.venue}
+      {/* Equipo Visitante */}
+      <div className="flex items-center justify-start gap-3">
+        <span className="text-left font-medium text-slate-900 text-lg">
+          {getTeamName(match.awayTeamId)}
         </span>
-      )}
+      </div>
     </div>
   )
 }

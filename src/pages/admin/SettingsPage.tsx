@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Input } from '../../components/ui'
+import { Checkbox } from '../../components/ui'
 import { getActiveTournament, updateTournament } from '../../services/database'
 import type { Tournament } from '../../types/domain'
 
@@ -21,12 +22,17 @@ export function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['activeTournament'] })
       alert('Configuración guardada correctamente')
     },
+    onError: (error: Error) => {
+      console.error('Update error:', error)
+      alert('Error al guardar: ' + error.message)
+    },
   })
 
   const [formData, setFormData] = useState({
     name: '',
     year: '',
     description: '',
+    libreTeamEnabled: false,
     yellowCardSuspensionThreshold: '4',
     consecutiveYellowSuspension: '2',
     redCardSuspensionMatches: '2',
@@ -39,6 +45,7 @@ export function SettingsPage() {
         name: tournament.name,
         year: tournament.year.toString(),
         description: tournament.description || '',
+        libreTeamEnabled: tournament.libreTeamEnabled || false,
         yellowCardSuspensionThreshold: (tournament.yellowCardSuspensionThreshold || 4).toString(),
         consecutiveYellowSuspension: (tournament.consecutiveYellowSuspension || 2).toString(),
         redCardSuspensionMatches: (tournament.redCardSuspensionMatches || 2).toString(),
@@ -56,9 +63,10 @@ export function SettingsPage() {
         name: formData.name,
         year: parseInt(formData.year, 10),
         description: formData.description || null,
-        yellowCardSuspensionThreshold: parseInt(formData.yellowCardSuspensionThreshold, 10),
-        consecutiveYellowSuspension: parseInt(formData.consecutiveYellowSuspension, 10),
-        redCardSuspensionMatches: parseInt(formData.redCardSuspensionMatches, 10),
+        libreTeamEnabled: formData.libreTeamEnabled,
+        yellow_card_suspension_threshold: parseInt(formData.yellowCardSuspensionThreshold, 10),
+        consecutive_yellow_suspension: parseInt(formData.consecutiveYellowSuspension, 10),
+        red_card_suspension_matches: parseInt(formData.redCardSuspensionMatches, 10),
       },
     })
   }
@@ -107,6 +115,13 @@ export function SettingsPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Breve descripción del torneo..."
+            />
+
+            <Checkbox
+              label="Equipo LIBRE"
+              checked={formData.libreTeamEnabled}
+              onChange={(e) => setFormData({ ...formData, libreTeamEnabled: e.target.checked })}
+              helper="Permite seleccionar equipo LIBRE en partidos"
             />
 
             {/* Rules Section */}

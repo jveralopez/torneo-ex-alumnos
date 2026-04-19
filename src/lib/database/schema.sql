@@ -135,6 +135,21 @@ CREATE TABLE document (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- News (Noticias/Avisos)
+CREATE TABLE news (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID REFERENCES tournament(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('info', 'warning', 'success', 'urgent')),
+    link TEXT,
+    link_label TEXT,
+    active BOOLEAN NOT NULL DEFAULT true,
+    published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Admin User (Usuario administrador)
 CREATE TABLE admin_user (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -210,3 +225,26 @@ CREATE TRIGGER update_document_updated_at
 CREATE TRIGGER update_admin_user_updated_at
     BEFORE UPDATE ON admin_user
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =============================================
+-- AUDIT LOG
+-- =============================================
+
+CREATE TABLE audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_user_id UUID REFERENCES admin_user(id) ON DELETE SET NULL,
+    table_name TEXT NOT NULL,
+    record_id UUID NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('create', 'update', 'delete')),
+    old_values JSONB,
+    new_values JSONB,
+    description TEXT,
+    ip_address TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índice para búsquedas rápidas
+CREATE INDEX idx_audit_log_table_name ON audit_log(table_name);
+CREATE INDEX idx_audit_log_admin_user_id ON audit_log(admin_user_id);
+CREATE INDEX idx_audit_log_created_at ON audit_log(created_at DESC);
+CREATE INDEX idx_audit_log_record_id ON audit_log(record_id);

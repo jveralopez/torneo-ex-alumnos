@@ -1,23 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader } from '../../components/ui'
-import { Button } from '../../components/ui'
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
-import { getTeams } from '../../services/database'
+import { Card, CardContent, CardHeader, Button, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
+import { getTeams, getPlayersByTournament } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
-import type { Team } from '../../types/domain'
 import { appRoutes } from '../../utils/routes'
-
-interface PlayerWithTeam {
-  id: string
-  firstName: string
-  lastName: string
-  shirtNumber: number | null
-  position: string | null
-  active: boolean
-  team: Team
-}
 
 export function PlayersPage() {
   const navigate = useNavigate()
@@ -30,10 +17,13 @@ export function PlayersPage() {
     enabled: !!tournamentId,
   })
 
-  // Placeholder - would need getPlayers function
-  const players: PlayerWithTeam[] = []
+  const { data: players = [], isLoading: playersLoading } = useQuery({
+    queryKey: ['players', tournamentId],
+    queryFn: () => getPlayersByTournament(tournamentId!),
+    enabled: !!tournamentId,
+  })
 
-  if (teamsLoading) {
+  if (teamsLoading || playersLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-sky-600" />
@@ -85,7 +75,7 @@ export function PlayersPage() {
                     <TableCell className="font-medium">
                       {player.firstName} {player.lastName}
                     </TableCell>
-                    <TableCell>{player.team.name}</TableCell>
+                    <TableCell>{player.teamId?.slice(0, 8)}...</TableCell>
                     <TableCell>{player.position || '-'}</TableCell>
                     <TableCell>
                       <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${

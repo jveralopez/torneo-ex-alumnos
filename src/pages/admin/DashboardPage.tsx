@@ -2,8 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { appRoutes } from '../../utils/routes'
 
 const modules = [
-  { name: 'Equipos', route: appRoutes.adminTeams, description: 'Gestiona los equipos del torneo' },
-  { name: 'Jugadores', route: appRoutes.adminPlayers, description: 'Administra los planteles' },
+  { name: 'Equipos', route: appRoutes.adminTeams, description: 'Gestiona equipos y planteles' },
   { name: 'Fechas y partidos', route: appRoutes.adminMatchDays, description: 'Configura el fixture' },
   { name: 'Resultados', route: appRoutes.adminMatchDays, description: 'Carga los resultados' },
   { name: 'Disciplina', route: appRoutes.adminSanctions, description: 'Sanciones y amonestaciones' },

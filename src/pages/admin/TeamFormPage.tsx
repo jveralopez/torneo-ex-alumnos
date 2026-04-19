@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Input } from '../../components/ui'
 import { Button } from '../../components/ui'
@@ -11,6 +11,7 @@ import { appRoutes } from '../../utils/routes'
 
 export function TeamFormPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { tournamentId } = useTournamentId()
   const [formData, setFormData] = useState({
     name: '',
@@ -19,15 +20,21 @@ export function TeamFormPage() {
   const [shieldFile, setShieldFile] = useState<File | null>(null)
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [uploading, setUploading] = useState(false)
 
   const createMutation = useMutation({
     mutationFn: createTeam,
     onSuccess: () => {
-      navigate(appRoutes.adminTeams)
+      setSuccess('Equipo creado correctamente')
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      setTimeout(() => {
+        navigate(appRoutes.adminTeams)
+      }, 1500)
     },
     onError: (err: Error) => {
       setError(err.message)
+      setSuccess('')
     },
   })
 
@@ -45,6 +52,7 @@ export function TeamFormPage() {
     }
 
     setError('')
+    setSuccess('')
     setUploading(true)
 
     try {
@@ -95,6 +103,11 @@ export function TeamFormPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {success && (
+              <div className="rounded-lg bg-green-900/50 p-3 text-sm text-green-200">
+                {success}
+              </div>
+            )}
             {error && (
               <div className="rounded-lg bg-red-900/50 p-3 text-sm text-red-200">
                 {error}

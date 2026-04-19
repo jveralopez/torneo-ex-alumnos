@@ -53,18 +53,18 @@ export function PlayersAtRiskPage() {
       </div>
 
       {/* Info Card */}
-      <Card className="border-yellow-500/30 bg-yellow-500/5">
+      <Card className="border-yellow-500/50 bg-yellow-100">
         <CardContent className="py-4">
           <div className="grid gap-2 sm:grid-cols-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-3 w-3 rounded-full bg-yellow-400"></span>
-              <span className="text-yellow-200">
+              <span className="inline-flex h-3 w-3 rounded-full bg-yellow-600"></span>
+              <span className="text-yellow-800 font-medium">
                 <strong>1+ amarilla en última fecha</strong> → Si recibe otra, 2 consecutivas = 1 fecha
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-3 w-3 rounded-full bg-orange-500"></span>
-              <span className="text-orange-200">
+              <span className="inline-flex h-3 w-3 rounded-full bg-orange-600"></span>
+              <span className="text-yellow-800 font-medium">
                 <strong>{threshold - 1}+ acumuladas</strong> → 1 más llega a {threshold} = suspensión automática
               </span>
             </div>

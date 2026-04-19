@@ -17,18 +17,23 @@ interface TeamStats {
 
 export function TeamDetailPage() {
   const { id: teamId } = useParams<{ id: string }>()
+  console.log('TeamDetailPage teamId:', teamId, 'trim:', teamId?.trim())
 
-  const { data: team, isLoading: teamLoading } = useQuery({
+  const { data: team, isLoading: teamLoading, error: teamError } = useQuery({
     queryKey: ['team', teamId],
     queryFn: () => getTeamById(teamId!),
     enabled: !!teamId,
   })
 
-  const { data: players = [], isLoading: playersLoading } = useQuery({
+  console.log('TeamDetail - teamId:', teamId, 'team:', team, 'teamError:', teamError)
+
+  const { data: players = [], isLoading: playersLoading, error: playersError } = useQuery({
     queryKey: ['players', teamId],
     queryFn: () => getPlayers(teamId!),
     enabled: !!teamId,
   })
+
+  console.log('TeamDetailPage - players:', players?.length, 'error:', playersError)
 
   const { data: matches = [] } = useQuery({
     queryKey: ['teamMatches', teamId],
@@ -43,6 +48,28 @@ export function TeamDetailPage() {
   })
 
   const isLoading = teamLoading || playersLoading
+
+  // Debug: show errors clearly
+  if (teamError) {
+    return (
+      <section className="rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-red-800">Error al cargar equipo</h1>
+        <p className="mt-3 text-sm text-red-600">{teamError.message}</p>
+        <Button variant="secondary" className="mt-4" onClick={() => window.location.reload()}>
+          Recargar página
+        </Button>
+      </section>
+    )
+  }
+
+  if (playersError) {
+    return (
+      <section className="rounded-[2rem] border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-yellow-800">Advertencia</h1>
+        <p className="mt-3 text-sm text-yellow-700">No se pudieron cargar los jugadores: {playersError.message}</p>
+      </section>
+    )
+  }
 
   // Calculate team statistics
   const stats: TeamStats = (() => {
@@ -88,12 +115,19 @@ export function TeamDetailPage() {
     )
   }
 
+  // Debug: show raw state
+  console.log('RENDER - team:', team, 'players:', players?.length)
+
+  // Debug: even if team is null - show it
   if (!team) {
     return (
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Equipo no encontrado</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
-          El equipo que buscas no existe o fue eliminado.
+      <section className="rounded-[2rem] border border-orange-200 bg-orange-50 p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-orange-800">Equipo no encontrado</h1>
+        <p className="mt-3 text-sm text-orange-600">
+          teamId: {teamId}
+        </p>
+        <p className="text-xs text-orange-500">
+          teamLoading: {String(teamLoading)}
         </p>
         <Button variant="secondary" className="mt-4" onClick={() => window.history.back()}>
           Volver
@@ -127,6 +161,16 @@ export function TeamDetailPage() {
             )}
           </div>
         </div>
+        {/* Team Photo - banner style */}
+        {team.teamPhotoUrl && (
+          <div className="mt-4 w-full aspect-[16/9] overflow-hidden rounded-xl">
+            <img
+              src={team.teamPhotoUrl}
+              alt={`Foto de ${team.name}`}
+              className="w-full h-full object-cover object-center"
+            />
+          </div>
+        )}
       </div>
 
       {/* Team Statistics */}
@@ -197,7 +241,7 @@ export function TeamDetailPage() {
                       />
                     ) : (
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-400">
-                        {player.firstName.charAt(0)}{player.lastName.charAt(0)}
+                        {player.firstName?.charAt(0)}{player.lastName?.charAt(0)}
                       </div>
                     )}
                     <div>

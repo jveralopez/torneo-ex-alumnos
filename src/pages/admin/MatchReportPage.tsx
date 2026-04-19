@@ -9,6 +9,7 @@ import {
   getTeams, 
   getPlayers, 
   getMatchById,
+  getMatchDays,
   createGoal, 
   deleteGoal,
   createCard, 
@@ -19,7 +20,6 @@ import {
 } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
 import type { Team, Player, Match, Goal, Card as CardType, CardType as CardTypeEnum, MatchStatus } from '../../types/domain'
-import { appRoutes } from '../../utils/routes'
 
 export function MatchReportPage() {
   const { id: matchId } = useParams<{ id: string }>()
@@ -38,6 +38,17 @@ export function MatchReportPage() {
     queryFn: () => getTeams(tournamentId!),
     enabled: !!tournamentId,
   })
+
+  const { data: matchDays = [] } = useQuery({
+    queryKey: ['matchDays', tournamentId],
+    queryFn: () => getMatchDays(tournamentId!),
+    enabled: !!tournamentId,
+  })
+
+  const currentMatchDay = matchDays.find(md => md.id === match?.matchDayId)
+  const isFreeTeamMatch = currentMatchDay?.freeTeamId && (
+    match?.homeTeamId === currentMatchDay.freeTeamId || match?.awayTeamId === currentMatchDay.freeTeamId
+  ) || false
 
   const { data: allPlayers = [] } = useQuery<Player[]>({
     queryKey: ['allPlayers', tournamentId],
@@ -69,7 +80,18 @@ export function MatchReportPage() {
     mutationFn: createGoal,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['match', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['allPlayedMatches', tournamentId] })
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] })
       setShowGoalForm(false)
+      setGoalMessage('Gol registrado correctamente')
+      setGoalError('')
+      setTimeout(() => setGoalMessage(''), 3000)
+    },
+    onError: (err: Error) => {
+      setGoalError(err.message)
+      setGoalMessage('')
+      setTimeout(() => setGoalError(''), 5000)
     },
   })
 
@@ -77,6 +99,9 @@ export function MatchReportPage() {
     mutationFn: deleteGoal,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['match', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['allPlayedMatches', tournamentId] })
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] })
     },
   })
 
@@ -84,8 +109,17 @@ export function MatchReportPage() {
     mutationFn: createCard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards', matchId] })
-      queryClient.invalidateQueries({ queryKey: ['activeSanctions'] }) // Check for automatic sanction
+      queryClient.invalidateQueries({ queryKey: ['match', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['activeSanctions'] })
       setShowCardForm(false)
+      setCardMessage('Tarjeta registrada correctamente')
+      setCardError('')
+      setTimeout(() => setCardMessage(''), 3000)
+    },
+    onError: (err: Error) => {
+      setCardError(err.message)
+      setCardMessage('')
+      setTimeout(() => setCardError(''), 5000)
     },
   })
 
@@ -101,12 +135,28 @@ export function MatchReportPage() {
       updateMatch(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['allPlayedMatches', tournamentId] })
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] })
+      // Invalidar sanciones y jugadores en observación con todos los tournamentId posibles
+      queryClient.invalidateQueries({ queryKey: ['activeSanctions'] })
+      queryClient.invalidateQueries({ queryKey: ['publicSanctions'] })
+      queryClient.invalidateQueries({ queryKey: ['playersAtRisk'] })
+      // Also invalidate with specific tournamentId patterns
+      if (tournamentId) {
+        queryClient.invalidateQueries({ queryKey: ['publicSanctions', tournamentId] })
+        queryClient.invalidateQueries({ queryKey: ['activeSanctions', tournamentId] })
+        queryClient.invalidateQueries({ queryKey: ['playersAtRisk', tournamentId] })
+      }
       setEditingResult(false)
     },
   })
 
   const [showGoalForm, setShowGoalForm] = useState(false)
   const [showCardForm, setShowCardForm] = useState(false)
+  const [goalMessage, setGoalMessage] = useState('')
+  const [goalError, setGoalError] = useState('')
+  const [cardMessage, setCardMessage] = useState('')
+  const [cardError, setCardError] = useState('')
   const [editingResult, setEditingResult] = useState(false)
   const [resultForm, setResultForm] = useState({
     homeGoals: '',
@@ -115,8 +165,11 @@ export function MatchReportPage() {
     notes: '',
   })
 
-  const getTeamName = (teamId: string) => {
+  const getTeamName = (teamId: string | null | undefined) => {
+    console.log('getTeamName called with:', teamId, 'teams length:', teams.length)
+    if (!teamId) return 'Por asignar'
     const team = teams.find((t: Team) => t.id === teamId)
+    console.log('Found team:', team)
     return team?.name || 'Equipo'
   }
 
@@ -125,13 +178,31 @@ export function MatchReportPage() {
     return player ? `${player.firstName} ${player.lastName}` : 'Jugador'
   }
 
-  const homeTeamPlayers = allPlayers.filter(p => p.teamId === match?.homeTeamId)
-  const awayTeamPlayers = allPlayers.filter(p => p.teamId === match?.awayTeamId)
+  const homeTeamPlayers = match?.homeTeamId 
+    ? allPlayers.filter(p => p.teamId === match.homeTeamId)
+    : []
+  const awayTeamPlayers = match?.awayTeamId 
+    ? allPlayers.filter(p => p.teamId === match.awayTeamId)
+    : []
   
   // Solo los equipos que disputan este partido
   const matchTeams = teams.filter((t: Team) => 
     t.id === match?.homeTeamId || t.id === match?.awayTeamId
   )
+
+  // Calcular resultado automáticamente desde los goles registrados
+  const homeGoalsCount = goals.filter(g => g.teamId === match?.homeTeamId).length
+  const awayGoalsCount = goals.filter(g => g.teamId === match?.awayTeamId).length
+  const hasCalculatedResult = goals.length > 0
+  const isResultConfirmed = match?.status === 'jugado' && match?.homeGoals !== null
+
+  console.log('DEBUG - match.homeTeamId:', match?.homeTeamId)
+  console.log('DEBUG - match.awayTeamId:', match?.awayTeamId)
+  console.log('DEBUG - matchTeams:', matchTeams)
+  console.log('DEBUG - homeTeamPlayers:', homeTeamPlayers)
+  console.log('DEBUG - awayTeamPlayers:', awayTeamPlayers)
+  console.log('DEBUG - goals:', goals)
+  console.log('DEBUG - homeGoalsCount:', homeGoalsCount, 'awayGoalsCount:', awayGoalsCount)
 
   const handleSaveResult = () => {
     if (!matchId) return
@@ -159,8 +230,15 @@ export function MatchReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <Button variant="ghost" onClick={() => navigate(appRoutes.adminMatchDays)} className="text-white">
-            ← Volver a Fechas
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['matches', match?.matchDayId] })
+              navigate(`/admin/fechas/${match?.matchDayId}`)
+            }} 
+            className="text-white"
+          >
+            ← Volver a Partidos
           </Button>
           <h1 className="mt-2 text-2xl font-bold text-white">Planilla del Partido</h1>
           {match && (
@@ -199,14 +277,14 @@ export function MatchReportPage() {
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-800">{getTeamName(match.homeTeamId)}</div>
                 <div className="mt-2 text-5xl font-black text-green-700">
-                  {match.homeGoals ?? '-'}
+                  {match.homeGoals !== null ? match.homeGoals : (hasCalculatedResult ? homeGoalsCount : '-')}
                 </div>
               </div>
               <div className="text-2xl font-bold text-green-400">vs</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-800">{getTeamName(match.awayTeamId)}</div>
                 <div className="mt-2 text-5xl font-black text-green-700">
-                  {match.awayGoals ?? '-'}
+                  {match.awayGoals !== null ? match.awayGoals : (hasCalculatedResult ? awayGoalsCount : '-')}
                 </div>
               </div>
             </div>
@@ -214,9 +292,38 @@ export function MatchReportPage() {
             <div className="py-8 text-center text-slate-400">Cargando partido...</div>
           )}
           
+          {hasCalculatedResult && !isResultConfirmed && (
+            <div className="mt-2 rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-700 font-medium">
+              Resultado calculado desde goles registrados. ¿Confirmar resultado?
+              <Button 
+                size="sm" 
+                className="ml-3 bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setResultForm({
+                    ...resultForm,
+                    homeGoals: homeGoalsCount.toString(),
+                    awayGoals: awayGoalsCount.toString(),
+                    status: 'jugado',
+                  })
+                  setEditingResult(true)
+                }}
+              >
+                Confirmar y Finalizar
+              </Button>
+            </div>
+          )}
+          
           {match?.status === 'jugado' && (
             <div className="mt-4 rounded-lg bg-green-50 p-3 text-center text-sm text-green-700 font-medium">
-              Partido disputado el {match.scheduledAt ? new Date(match.scheduledAt).toLocaleDateString('es-AR') : 'fecha no definida'}
+              Partido disputado el {
+                match.scheduledAt 
+                  ? (() => {
+                      const date = new Date(match.scheduledAt)
+                      date.setHours(date.getHours() + 3)
+                      return date.toLocaleDateString('es-AR')
+                    })()
+                  : 'fecha no definida'
+              }
             </div>
           )}
         </CardContent>
@@ -264,14 +371,46 @@ export function MatchReportPage() {
                 <Select
                   label="Estado del partido"
                   value={resultForm.status}
-                  onChange={(e) => setResultForm({ ...resultForm, status: e.target.value })}
+                  onChange={(e) => {
+                    const newStatus = e.target.value
+                    // Auto-fill 3-0 for no-show
+                    if (newStatus === 'no_presento_local') {
+                      setResultForm({ 
+                        ...resultForm, 
+                        status: 'jugado',
+                        homeGoals: '0',
+                        awayGoals: '3',
+                        notes: resultForm.notes ? `${resultForm.notes}\nLocal no se presentó` : 'Local no se presentó'
+                      })
+                    } else if (newStatus === 'no_presento_visita') {
+                      setResultForm({ 
+                        ...resultForm, 
+                        status: 'jugado',
+                        homeGoals: '3',
+                        awayGoals: '0',
+                        notes: resultForm.notes ? `${resultForm.notes}\nVisita no se presentó` : 'Visita no se presentó'
+                      })
+                    } else {
+                      setResultForm({ ...resultForm, status: newStatus })
+                    }
+                  }}
                   options={[
                     { value: 'programado', label: 'Programado' },
                     { value: 'jugado', label: 'Jugado' },
+                    { value: 'no_presento_local', label: 'No se presentó (Local)' },
+                    { value: 'no_presento_visita', label: 'No se presentó (Visita)' },
                     { value: 'suspendido', label: 'Suspendido' },
                     { value: 'reprogramado', label: 'Reprogramado' },
                   ]}
                 />
+
+                {(resultForm.status === 'jugado' || resultForm.status === 'no_presento_local' || resultForm.status === 'no_presento_visita') && (
+                  <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
+                    {resultForm.status === 'no_presento_local' && '⚠️ El equipo local no se presentará. Se registrará 0-3 a favor del visitante.'}
+                    {resultForm.status === 'no_presento_visita' && '⚠️ El equipo visitante no se presentará. Se registrará 3-0 a favor del local.'}
+                    {resultForm.status === 'jugado' && '✓ Partido completado normalmente'}
+                  </div>
+                )}
 
                 <Input
                   label="Observaciones del árbitro"
@@ -295,11 +434,26 @@ export function MatchReportPage() {
       )}
 
       {/* Goals */}
+      {isFreeTeamMatch && (
+        <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-700">
+          ⚠️ Este equipo no juega esta jornada. No se pueden registrar goles ni tarjetas.
+        </div>
+      )}
+      {goalMessage && (
+        <div className="rounded-lg bg-green-100 border border-green-400 p-3 text-sm text-green-800">
+          {goalMessage}
+        </div>
+      )}
+      {goalError && (
+        <div className="rounded-lg bg-red-100 border border-red-400 p-3 text-sm text-red-800">
+          {goalError}
+        </div>
+      )}
       <Card className="border-green-500/30">
         <CardHeader>
           <div className="flex items-center justify-between">
             <span className="font-bold text-green-800">Goles ({goals.length})</span>
-            <Button size="sm" onClick={() => setShowGoalForm(true)}>
+            <Button size="sm" onClick={() => setShowGoalForm(true)} disabled={isFreeTeamMatch}>
               + Agregar Gol
             </Button>
           </div>
@@ -345,6 +499,8 @@ export function MatchReportPage() {
         <GoalForm
           matchId={matchId!}
           teams={matchTeams}
+          homeTeamId={match?.homeTeamId || ''}
+          awayTeamId={match?.awayTeamId || ''}
           homeTeamPlayers={homeTeamPlayers}
           awayTeamPlayers={awayTeamPlayers}
           onClose={() => setShowGoalForm(false)}
@@ -354,11 +510,21 @@ export function MatchReportPage() {
       )}
 
       {/* Cards */}
+      {cardMessage && (
+        <div className="rounded-lg bg-green-100 border border-green-400 p-3 text-sm text-green-800">
+          {cardMessage}
+        </div>
+      )}
+      {cardError && (
+        <div className="rounded-lg bg-red-100 border border-red-400 p-3 text-sm text-red-800">
+          {cardError}
+        </div>
+      )}
       <Card className="border-green-500/30">
         <CardHeader>
           <div className="flex items-center justify-between">
             <span className="font-bold text-green-800">Tarjetas ({cards.length})</span>
-            <Button size="sm" onClick={() => setShowCardForm(true)}>
+            <Button size="sm" onClick={() => setShowCardForm(true)} disabled={isFreeTeamMatch}>
               + Agregar Tarjeta
             </Button>
           </div>
@@ -427,6 +593,8 @@ export function MatchReportPage() {
 function GoalForm({
   matchId,
   teams,
+  homeTeamId,
+  awayTeamId,
   homeTeamPlayers,
   awayTeamPlayers,
   onClose,
@@ -435,6 +603,8 @@ function GoalForm({
 }: {
   matchId: string
   teams: Team[]
+  homeTeamId: string
+  awayTeamId: string
   homeTeamPlayers: Player[]
   awayTeamPlayers: Player[]
   onClose: () => void
@@ -460,13 +630,17 @@ function GoalForm({
 
   const teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
   
-  const teamPlayers = formData.teamId === teams[0]?.id 
+  // Usar los IDs de los equipos del partido que vienen como props
+  const teamPlayers = formData.teamId === homeTeamId 
     ? homeTeamPlayers 
-    : formData.teamId === teams[1]?.id 
+    : formData.teamId === awayTeamId 
       ? awayTeamPlayers 
       : []
       
-  const playerOptions = teamPlayers.map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName} (#${p.shirtNumber})` }))
+  const playerOptions = teamPlayers.map(p => ({ 
+    value: p.id, 
+    label: p.shirtNumber ? `${p.firstName} ${p.lastName} (#${p.shirtNumber})` : `${p.firstName} ${p.lastName}`
+  }))
 
   return (
     <Card className="mb-6 border-green-500/30">
@@ -527,7 +701,6 @@ function CardForm({
     teamId: '',
     playerId: '',
     type: 'amarilla',
-    minute: '',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -539,13 +712,16 @@ function CardForm({
       teamId: formData.teamId,
       playerId: formData.playerId,
       type: formData.type as CardTypeEnum,
-      minute: formData.minute ? parseInt(formData.minute, 10) : null,
+      minute: null,
     })
   }
 
   const teamOptions = teams.map(t => ({ value: t.id, label: t.name }))
   const teamPlayers = players.filter(p => p.teamId === formData.teamId)
-  const playerOptions = teamPlayers.map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName} (#${p.shirtNumber})` }))
+  const playerOptions = teamPlayers.map(p => ({ 
+    value: p.id, 
+    label: p.shirtNumber ? `${p.firstName} ${p.lastName} (#${p.shirtNumber})` : `${p.firstName} ${p.lastName}`
+  }))
 
   return (
     <Card className="mb-6 border-green-500/30">
@@ -582,15 +758,6 @@ function CardForm({
                 { value: 'amarilla', label: 'Amarilla' },
                 { value: 'roja', label: 'Roja' },
               ]}
-            />
-            <Input
-              label="Minuto"
-              type="number"
-              min="1"
-              max="120"
-              value={formData.minute}
-              onChange={(e) => setFormData({ ...formData, minute: e.target.value })}
-              placeholder="45"
             />
           </div>
           <div className="flex justify-end gap-3">

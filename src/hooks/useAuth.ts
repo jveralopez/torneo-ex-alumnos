@@ -2,6 +2,26 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AdminUser } from '../types/domain'
 import * as authService from '../services/auth'
+import { isAdminSessionEnabled } from '../lib/env'
+
+// Usuario dummy para bypass
+const DUMMY_ADMIN: AdminUser = {
+  id: 'bypass-admin',
+  email: 'admin@test.com',
+  name: 'Admin Bypass',
+  role: 'admin',
+  active: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+// Si admin bypass esta habilitado, usar usuario dummy
+const getInitialUser = () => {
+  if (isAdminSessionEnabled) {
+    return DUMMY_ADMIN
+  }
+  return null
+}
 
 interface AuthStore {
   user: AdminUser | null
@@ -17,7 +37,7 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
-      user: null,
+      user: getInitialUser(),
       isLoading: false,
       isInitialized: false,
 
@@ -45,6 +65,11 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       checkAuth: async () => {
+        // Si el bypass está activo, no hacer nada
+        if (isAdminSessionEnabled) {
+          set({ user: DUMMY_ADMIN, isLoading: false, isInitialized: true })
+          return
+        }
         if (!get().isInitialized) {
           set({ isLoading: true })
           try {

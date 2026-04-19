@@ -6,10 +6,10 @@ import { appRoutes } from '../../utils/routes'
 const adminNavItems = [
   { to: appRoutes.admin, label: 'Dashboard', end: true },
   { to: appRoutes.adminTeams, label: 'Equipos' },
-  { to: appRoutes.adminPlayers, label: 'Jugadores' },
   { to: appRoutes.adminMatchDays, label: 'Fechas' },
   { to: appRoutes.adminSanctions, label: 'Sanciones' },
   { to: appRoutes.adminDocuments, label: 'Documentos' },
+  { to: '/admin/noticias', label: 'Noticias' },
   { to: '/admin/configuracion', label: '⚙️ Config' },
 ]
 

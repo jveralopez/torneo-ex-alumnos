@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
-import { Input } from '../../components/ui'
-import { getMatchDays, createMatchDay, updateMatchDay } from '../../services/database'
+import { Input, Select } from '../../components/ui'
+import { getMatchDays, createMatchDayWithMatches, updateMatchDay, deleteMatchDay, getTeams } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
 import type { MatchDay } from '../../types/domain'
 import { appRoutes } from '../../utils/routes'
@@ -15,7 +15,9 @@ export function MatchDaysPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [showAllDates, setShowAllDates] = useState(false)
+  const [showAllDates, setShowAllDates] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const { tournamentId } = useTournamentId()
 
   const { data: allMatchDays = [], isLoading } = useQuery({
@@ -24,19 +26,41 @@ export function MatchDaysPage() {
     enabled: !!tournamentId,
   })
 
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams', tournamentId],
+    queryFn: () => getTeams(tournamentId!),
+    enabled: !!tournamentId,
+  })
+
   // Filtrar fechas: si showAllDates=false, solo mostrar las publicadas
   const matchDays = showAllDates 
     ? allMatchDays 
     : allMatchDays.filter((md: MatchDay) => md.published)
 
+  // Calcular el siguiente número de fecha
+  const nextMatchDayNumber = matchDays.length > 0 
+    ? Math.max(...matchDays.map((md: MatchDay) => md.number)) + 1 
+    : 1
+
   const createMutation = useMutation({
     mutationFn: ({ data }: { data: Partial<MatchDay> }) => {
       if (!tournamentId) throw new Error('No hay torneo activo')
-      return createMatchDay({ ...data, tournamentId })
+      return createMatchDayWithMatches({ ...data, tournamentId })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matchDays'] })
       setShowForm(false)
+      setSuccess('Fecha creada correctamente')
+      setError('')
+    },
+    onError: (err: Error) => {
+      console.error('Error creating match day:', err)
+      if (err.message.includes('duplicate key') || err.message.includes('already exists')) {
+        setError('Ya existe una fecha con ese número. Elegí otro número.')
+      } else {
+        setError(err.message)
+      }
+      setSuccess('')
     },
   })
 
@@ -46,15 +70,29 @@ export function MatchDaysPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matchDays'] })
       setEditingId(null)
+      setSuccess('Fecha actualizada correctamente')
+      setError('')
+    },
+    onError: (err: Error) => {
+      console.error('Error updating match day:', err)
+      setError(err.message)
+      setSuccess('')
     },
   })
 
-  const handleToggleVisibility = (id: string, current: boolean) => {
-    updateMutation.mutate({
-      id,
-      data: { visiblePublicly: !current },
-    })
-  }
+  const deleteMutation = useMutation({
+    mutationFn: deleteMatchDay,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matchDays'] })
+      setSuccess('Fecha eliminada correctamente')
+      setError('')
+    },
+    onError: (err: Error) => {
+      console.error('Error deleting match day:', err)
+      setError(err.message)
+      setSuccess('')
+    },
+  })
 
   const handleTogglePublish = (id: string, current: boolean) => {
     updateMutation.mutate({
@@ -124,7 +162,7 @@ export function MatchDaysPage() {
               </Button>
             </>
           )}
-          <Button onClick={() => setShowForm(true)}>
+          <Button onClick={() => { console.log('Clicked: setShowForm(true)'); setShowForm(true) }}>
             Nueva Fecha
           </Button>
         </div>
@@ -132,11 +170,24 @@ export function MatchDaysPage() {
 
       {/* Formulario de nueva fecha */}
       {showForm && (
-        <MatchDayForm
-          onClose={() => setShowForm(false)}
-          onSubmit={(data) => createMutation.mutate({ data })}
-          isLoading={createMutation.isPending}
-        />
+        <>
+          {success && (
+            <div className="mb-4 rounded-lg bg-green-900/50 p-3 text-sm text-green-200">
+              {success}
+            </div>
+          )}
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-900/50 p-3 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+          <MatchDayForm
+            onClose={() => { setShowForm(false); setError(''); setSuccess('') }}
+            onSubmit={(data) => createMutation.mutate({ data })}
+            isLoading={createMutation.isPending}
+            defaultNumber={nextMatchDayNumber}
+          />
+        </>
       )}
 
       <Card>
@@ -155,8 +206,7 @@ export function MatchDaysPage() {
                   <TableHeader>#</TableHeader>
                   <TableHeader>Título</TableHeader>
                   <TableHeader>Fecha ref.</TableHeader>
-                  <TableHeader>Visible</TableHeader>
-                  <TableHeader>Publicada</TableHeader>
+                  <TableHeader>Estado</TableHeader>
                   <TableHeader className="text-right">Acciones</TableHeader>
                 </TableRow>
               </TableHead>
@@ -166,19 +216,6 @@ export function MatchDaysPage() {
                     <TableCell className="font-medium">{md.number}</TableCell>
                     <TableCell>{md.title || `Fecha ${md.number}`}</TableCell>
                     <TableCell>{md.referenceDate || '-'}</TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVisibility(md.id, md.visiblePublicly)}
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                          md.visiblePublicly 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {md.visiblePublicly ? 'Sí' : 'No'}
-                      </button>
-                    </TableCell>
                     <TableCell>
                       <button
                         type="button"
@@ -208,6 +245,31 @@ export function MatchDaysPage() {
                         >
                           Editar
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={md.published ? 'text-orange-500 hover:text-orange-400' : 'text-green-600 hover:text-green-500'}
+                          onClick={() => {
+                            updateMutation.mutate({ 
+                              id: md.id, 
+                              data: { published: !md.published } 
+                            })
+                          }}
+                        >
+                          {md.published ? 'Despublicar' : 'Publicar'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:text-red-300"
+                          onClick={() => {
+                            if (confirm(`¿Eliminar fecha "${md.title || md.number}"?`)) {
+                              deleteMutation.mutate(md.id)
+                            }
+                          }}
+                        >
+                          Eliminar
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -222,6 +284,7 @@ export function MatchDaysPage() {
       {editingId && (
         <MatchDayFormEdit
           matchDay={matchDays.find((m: MatchDay) => m.id === editingId)!}
+          teams={teams}
           onClose={() => setEditingId(null)}
           onSubmit={(data) => updateMutation.mutate({ id: editingId, data })}
           isLoading={updateMutation.isPending}
@@ -234,14 +297,16 @@ export function MatchDaysPage() {
 function MatchDayForm({ 
   onClose, 
   onSubmit, 
-  isLoading 
+  isLoading,
+  defaultNumber
 }: { 
   onClose: () => void
   onSubmit: (data: Partial<MatchDay>) => void
   isLoading: boolean 
+  defaultNumber?: number
 }) {
   const [formData, setFormData] = useState({
-    number: '',
+    number: defaultNumber?.toString() || '',
     title: '',
     referenceDate: '',
   })
@@ -252,7 +317,6 @@ function MatchDayForm({
       number: parseInt(formData.number, 10),
       title: formData.title || null,
       referenceDate: formData.referenceDate || null,
-      visiblePublicly: false,
       published: false,
     } as Partial<MatchDay>)
   }
@@ -303,11 +367,13 @@ function MatchDayForm({
 
 function MatchDayFormEdit({ 
   matchDay, 
+  teams,
   onClose, 
   onSubmit, 
   isLoading 
 }: { 
   matchDay: MatchDay
+  teams: { id: string; name: string }[]
   onClose: () => void
   onSubmit: (data: Partial<MatchDay>) => void
   isLoading: boolean 
@@ -316,6 +382,7 @@ function MatchDayFormEdit({
     number: matchDay.number.toString(),
     title: matchDay.title || '',
     referenceDate: matchDay.referenceDate || '',
+    freeTeamId: matchDay.freeTeamId || '',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -324,8 +391,14 @@ function MatchDayFormEdit({
       number: parseInt(formData.number, 10),
       title: formData.title || null,
       referenceDate: formData.referenceDate || null,
+      freeTeamId: formData.freeTeamId || null,
     })
   }
+
+  const teamOptions = [
+    { value: '', label: 'Sin equipo libre' },
+    ...teams.map(t => ({ value: t.id, label: t.name }))
+  ]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -335,7 +408,7 @@ function MatchDayFormEdit({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Número"
                 type="number"
@@ -349,11 +422,19 @@ function MatchDayFormEdit({
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Fecha referencia"
                 type="date"
                 value={formData.referenceDate}
                 onChange={(e) => setFormData({ ...formData, referenceDate: e.target.value })}
+              />
+              <Select
+                label="Equipo que no juega"
+                value={formData.freeTeamId}
+                onChange={(e) => setFormData({ ...formData, freeTeamId: e.target.value })}
+                options={teamOptions}
               />
             </div>
             <div className="flex justify-end gap-3">
