@@ -9,8 +9,9 @@ const adminNavItems = [
   { to: appRoutes.adminMatchDays, label: 'Fechas' },
   { to: appRoutes.adminSanctions, label: 'Sanciones' },
   { to: appRoutes.adminDocuments, label: 'Documentos' },
-  { to: '/admin/noticias', label: 'Noticias' },
-  { to: '/admin/configuracion', label: '⚙️ Config' },
+  { to: appRoutes.adminAudit, label: 'Auditoria' },
+  { to: appRoutes.adminNews, label: 'Noticias' },
+  { to: appRoutes.adminSettings, label: '⚙️ Config' },
 ]
 
 export function AdminLayout() {

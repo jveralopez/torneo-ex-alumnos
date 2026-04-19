@@ -18,6 +18,7 @@ import { SanctionsPage } from '../pages/admin/SanctionsPage'
 import { DocumentsPage } from '../pages/admin/DocumentsPage'
 import { NewsPage } from '../pages/admin/NewsPage'
 import { SettingsPage } from '../pages/admin/SettingsPage'
+import { AuditLogsPage } from '../pages/admin/AuditLogsPage'
 import { HomePage } from '../pages/public/HomePage'
 import { FixturePage } from '../pages/public/FixturePage'
 import { ResultsPage } from '../pages/public/ResultsPage'
@@ -86,6 +87,9 @@ export function AppRouter() {
         
         {/* Configuración */}
         <Route path="configuracion" element={<SettingsPage />} />
+
+        {/* Auditoria */}
+        <Route path="auditoria" element={<AuditLogsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to={appRoutes.home} replace />} />

@@ -23,6 +23,9 @@ export const appRoutes = {
   adminMatchCards: '/admin/fechas/:id/tarjetas',
   adminSanctions: '/admin/sanciones',
   adminDocuments: '/admin/documentos',
+  adminAudit: '/admin/auditoria',
+  adminSettings: '/admin/configuracion',
+  adminNews: '/admin/noticias',
 } as const
 
 type AppRoute = (typeof appRoutes)[keyof typeof appRoutes]
