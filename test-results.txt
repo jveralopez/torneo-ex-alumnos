@@ -1,0 +1,127 @@
+
+Running 29 tests using 1 worker
+
+  ✓   1 [chromium] › e2e\cu\CU-01-02_Torneo.spec.ts:4:3 › CU-01: Crear Torneo › debe permitir crear un nuevo torneo (893ms)
+  ✓   2 [chromium] › e2e\cu\CU-01-02_Torneo.spec.ts:12:3 › CU-02: Modificar Configuración › debe permitir modificar configuración del torneo (5.1s)
+  ✘   3 [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:4:3 › CU-10: Crear Equipo › debe permitir crear un nuevo equipo (30.1s)
+  ✓   4 [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:14:3 › CU-11: Modificar Equipo › debe permitir editar un equipo (389ms)
+  ✓   5 [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:26:3 › CU-12: Eliminar Equipo › debe permitir eliminar un equipo (327ms)
+  ✓   6 [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:36:3 › CU-20: Crear Jugador › debe permitir crear un jugador en un equipo (328ms)
+  ✓   7 [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:52:3 › CU-21: Modificar Jugador › debe permitir editar un jugador (405ms)
+Partidos creados: [33m0[39m
+  ✘   8 [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:4:3 › CU-30: Crear Fecha › debe crear fecha con 4 partidos automáticos (3.6s)
+  ✓   9 [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:21:3 › CU-31: Editar Fecha › debe permitir editar una fecha (417ms)
+  ✓  10 [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:32:3 › CU-32: Eliminar Fecha › debe permitir eliminar una fecha (345ms)
+Editando fecha para publicar...
+  ✓  11 [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:42:3 › CU-33: Publicar Fecha › debe publicar una fecha para que sea visible en portal (2.2s)
+Editando para ocultar...
+  ✓  12 [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:51:3 › CU-34: Ocultar Fecha › debe ocultar una fecha del portal público (1.2s)
+  ✓  13 [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:4:3 › CU-40: Editar Partido › debe permitir asignar equipos a un partido (3.7s)
+Sección resultado visible: [33mfalse[39m
+  ✓  14 [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:16:3 › CU-41: Cargar Resultado › debe permitir cargar resultado de partido (2.6s)
+Botón agregar gol visible: [33mfalse[39m
+  ✘  15 [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:31:3 › CU-50: Cargar Goles › debe permitir registrar goles en un partido (30.1s)
+Botón agregar tarjeta visible: [33mfalse[39m
+  ✓  16 [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:46:3 › CU-51: Cargar Tarjeta Amarilla › debe permitir registrar tarjeta amarilla (4.2s)
+Partido editable abierto
+  ✓  17 [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:60:3 › CU-52: Cargar Tarjeta Roja › debe permitir registrar tarjeta roja (2.7s)
+Página sanciones visible: [33mtrue[39m
+  ✓  18 [chromium] › e2e\cu\CU-60-63_Sanciones.spec.ts:4:3 › CU-60: Ver Sanciones Activas › debe mostrar sanciones activas (2.3s)
+  ✓  19 [chromium] › e2e\cu\CU-60-63_Sanciones.spec.ts:13:3 › CU-61: Crear Sanción Manual › debe permitir crear sanción manual (343ms)
+Verificando sanciones existentes...
+  ✓  20 [chromium] › e2e\cu\CU-60-63_Sanciones.spec.ts:24:3 › CU-62: Marcar Sanción Cumplida › debe permitir marcar sanción como cumplida (1.3s)
+Verificar que sistema crea sanciones automáticas
+  ✓  21 [chromium] › e2e\cu\CU-60-63_Sanciones.spec.ts:32:3 › CU-63: Verificar Sanciones Automáticas › debe crear sanción automática por roja (392ms)
+Fixture visible: [33mtrue[39m
+  ✓  22 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:4:3 › CU-70: Ver Fixture › debe mostrar fixture con fechas publicadas (2.3s)
+Equipo libre visible: [33mfalse[39m
+  ✓  23 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:13:3 › CU-71: Ver Equipo Libre › debe mostrar equipo que no juega en la fecha (2.3s)
+Posiciones visible: [33mtrue[39m
+  ✓  24 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:22:3 › CU-72: Ver Tabla de Posiciones › debe mostrar tabla de posiciones (2.3s)
+Equipos visible: [33mtrue[39m
+  ✓  25 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:31:3 › CU-73: Ver Equipos › debe mostrar lista de equipos (2.3s)
+Noticias visible: [33mtrue[39m
+  ✓  26 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:40:3 › CU-74: Ver Noticias › debe mostrar noticias (2.4s)
+Input de configuración visible: [33mfalse[39m
+  ✓  27 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:49:3 › CU-80: Configurar Umbral de Amarillas › debe permitir configurar umbral (291ms)
+Configuración de roja visible
+  ✓  28 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:57:3 › CU-81: Configurar Suspensión por Roja › debe permitir configurar suspensión por roja (302ms)
+Checkbox visible: [33mfalse[39m
+  ✓  29 [chromium] › e2e\cu\CU-70-82_Publico_Config.spec.ts:64:3 › CU-82: Habilitar Equipo Libre › debe mostrar checkbox de equipo libre (309ms)
+
+
+  1) [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:4:3 › CU-10: Crear Equipo › debe permitir crear un nuevo equipo 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[type="text"]').first()[22m
+
+
+       5 |     await page.goto('http://localhost:5173/admin/equipos');
+       6 |     await page.click('text=Nuevo Equipo');
+    >  7 |     await page.fill('input[type="text"] >> nth=0', 'Equipo Test E2E');
+         |                ^
+       8 |     await page.click('button:has-text("Crear Equipo")');
+       9 |     await page.waitForTimeout(3000);
+      10 |   });
+        at C:\proyectos\torneoExAlumnos\e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:7:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cu-CU-10-22_Equipos_Jugado-9cb51-mitir-crear-un-nuevo-equipo-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cu-CU-10-22_Equipos_Jugado-9cb51-mitir-crear-un-nuevo-equipo-chromium\error-context.md
+
+  2) [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:4:3 › CU-30: Crear Fecha › debe crear fecha con 4 partidos automáticos 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m4[39m
+    Received: [31m0[39m
+
+      14 |     const partidos = await page.locator('table tbody tr').count();
+      15 |     console.log('Partidos creados:', partidos);
+    > 16 |     expect(partidos).toBe(4);
+         |                      ^
+      17 |   });
+      18 | });
+      19 |
+        at C:\proyectos\torneoExAlumnos\e2e\cu\CU-30-34_Fechas.spec.ts:16:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cu-CU-30-34_Fechas-CU-30-C-13c9a--con-4-partidos-automáticos-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cu-CU-30-34_Fechas-CU-30-C-13c9a--con-4-partidos-automáticos-chromium\error-context.md
+
+  3) [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:31:3 › CU-50: Cargar Goles › debe permitir registrar goles en un partido 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.isEnabled: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('button:has-text("+ Agregar Gol")')[22m
+
+
+      38 |       const btnGol = page.locator('button:has-text("+ Agregar Gol")');
+      39 |       console.log('Botón agregar gol visible:', await btnGol.isVisible());
+    > 40 |       console.log('Botón agregar gol enabled:', await btnGol.isEnabled());
+         |                                                              ^
+      41 |     }
+      42 |   });
+      43 | });
+        at C:\proyectos\torneoExAlumnos\e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:40:62
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cu-CU-40-52_Partidos_Plani-e123b-gistrar-goles-en-un-partido-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cu-CU-40-52_Partidos_Plani-e123b-gistrar-goles-en-un-partido-chromium\error-context.md
+
+  3 failed
+    [chromium] › e2e\cu\CU-10-22_Equipos_Jugadores.spec.ts:4:3 › CU-10: Crear Equipo › debe permitir crear un nuevo equipo 
+    [chromium] › e2e\cu\CU-30-34_Fechas.spec.ts:4:3 › CU-30: Crear Fecha › debe crear fecha con 4 partidos automáticos 
+    [chromium] › e2e\cu\CU-40-52_Partidos_Planilla.spec.ts:31:3 › CU-50: Cargar Goles › debe permitir registrar goles en un partido 
+  26 passed (1.9m)

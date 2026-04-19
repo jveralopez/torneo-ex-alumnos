@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Input } from '../../components/ui'
 import { Checkbox } from '../../components/ui'
-import { getActiveTournament, updateTournament } from '../../services/database'
+import { getActiveTournament, updateTournament, clearAllMatchData } from '../../services/database'
 import type { Tournament } from '../../types/domain'
 
 export function SettingsPage() {
@@ -169,7 +169,7 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="max-w-2xl border-yellow-500/30 bg-yellow-500/5">
+<Card className="max-w-2xl border-yellow-500/30 bg-yellow-500/5">
         <CardHeader>
           <span className="font-bold text-yellow-400">ℹ️ Cómo funcionan las sanciones</span>
         </CardHeader>
@@ -177,7 +177,7 @@ export function SettingsPage() {
           <div className="space-y-3 text-sm text-yellow-200">
             <div className="flex items-start gap-2">
               <span className="font-semibold text-yellow-400">🟨 Amarillas no consecutivas:</span>
-              <span>Cuando un jugador acumula {formData.yellowCardSuspensionThreshold} amarillas (no seguidas), se genera automáticamente 1 fecha de sanción.</span>
+              <span>Cuando un jugador acumular {formData.yellowCardSuspensionThreshold} amarillas (no seguidas), se genera automáticamente 1 fecha de sanción.</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="font-semibold text-yellow-400">🟨 Amarillas consecutivas:</span>
@@ -188,6 +188,36 @@ export function SettingsPage() {
               <span>Genera automáticamente {formData.redCardSuspensionMatches} fechas de suspensión. Se aplica al registrar la roja en la planilla.</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Botón para limpiar datos */}
+      <Card className="max-w-2xl border-red-500/30 bg-red-500/5">
+        <CardHeader>
+          <span className="font-bold text-red-400">🧹 Limpiar Datos del Torneo</span>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-red-200">
+            Esto borrará TODOS los goles, tarjetas y sanciones, ypondrá todos los partidos como "programado".
+            <strong className="text-red-300"> Esta acción no se puede deshacer.</strong>
+          </p>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              if (!confirm('¿Estás seguro que querés borrar todos los datos de planilla? Esta acción no se puede deshacer.')) {
+                return
+              }
+              try {
+                const result = await clearAllMatchData()
+                queryClient.invalidateQueries()
+                alert(`✅ Datos limpiados:\n- ${result.goalsDeleted} goles borrados\n- ${result.cardsDeleted} tarjetas borradas\n- ${result.sanctionsDeleted} sanciones borradas\n- ${result.matchesReset} partidosreseteados`)
+              } catch (error: any) {
+                alert('Error al limpiar datos: ' + error.message)
+              }
+            }}
+          >
+            🧹 Limpiar Todos los Datos
+          </Button>
         </CardContent>
       </Card>
     </section>

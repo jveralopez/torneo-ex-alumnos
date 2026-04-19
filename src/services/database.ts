@@ -2320,6 +2320,33 @@ export async function deleteSanction(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Función para limpiar TODOS los datos de planilla (goles, tarjetas, sanciones)
+// Mantiene los partidos y equipos, y pone todos los partidos como "programado"
+export async function clearAllMatchData(): Promise<{ goalsDeleted: number; cardsDeleted: number; sanctionsDeleted: number; matchesReset: number }> {
+  const supabase = getSupabaseClient()
+  
+  // Contar antes de borrar
+  const { count: goalsCount } = await supabase.from('goal').select('*', { count: 'exact', head: true })
+  const { count: cardsCount } = await supabase.from('card').select('*', { count: 'exact', head: true })
+  const { count: sanctionsCount } = await supabase.from('sanction').select('*', { count: 'exact', head: true })
+  const { count: matchesCount } = await supabase.from('match').select('*', { count: 'exact', head: true }).neq('status', 'programado')
+  
+  // Borrar todos los datos de planilla
+  await supabase.from('goal').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('card').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('sanction').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  
+  // Poner todos los partidos como "programado"
+  await supabase.from('match').update({ status: 'programado' }).neq('status', 'programado')
+  
+  return {
+    goalsDeleted: goalsCount || 0,
+    cardsDeleted: cardsCount || 0,
+    sanctionsDeleted: sanctionsCount || 0,
+    matchesReset: matchesCount || 0
+  }
+}
+
 // Get players near suspension with additional data about last match day cards
 export async function getPlayersNearSuspension(tournamentId: string, threshold: number): Promise<Array<{ 
   player: Player; 

@@ -56,6 +56,21 @@ export function AdminLayout() {
         <main className="flex-1 py-8">
           <Outlet />
         </main>
+        
+        <footer className="mt-auto border-t border-white/10 bg-white/5 py-4">
+          <p className="text-center text-sm text-slate-400">
+            Esto es una solución diseñada y creada por{' '}
+            <a 
+              href="https://www.octolab.com.ar" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-green-400 hover:text-green-300 font-semibold underline"
+            >
+              Octolab
+            </a>
+            {' '}2026
+          </p>
+        </footer>
       </div>
     </div>
   )
