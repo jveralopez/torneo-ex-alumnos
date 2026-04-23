@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 interface RichTextEditorProps {
   value: string
@@ -14,19 +14,70 @@ export function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null)
   const [isLinkInputVisible, setIsLinkInputVisible] = useState(false)
   const [linkInput, setLinkInput] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  const execCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value)
+  // Initialize content when value changes and not focused
+  useEffect(() => {
+    if (!isInitialized && editorRef.current && value) {
+      editorRef.current.innerHTML = value
+      setIsInitialized(true)
+    }
+  }, [value, isInitialized])
+
+  const applyFormat = (tag: string) => {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    const selectedText = range.toString()
+
+    if (!selectedText) return
+
+    const wrapper = document.createElement(tag)
+    wrapper.textContent = selectedText
+
+    range.deleteContents()
+    range.insertNode(wrapper)
+
+    // Clear selection and move cursor after
+    selection.removeAllRanges()
+    const newRange = document.createRange()
+    newRange.selectNodeContents(wrapper)
+    newRange.collapse(false)
+    selection.addRange(newRange)
+
+    // Trigger onChange
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)
     }
   }
 
-  const handleLinkInsert = () => {
-    if (linkInput) {
-      execCommand('createLink', linkInput)
-      setLinkInput('')
-      setIsLinkInputVisible(false)
+  const insertLink = () => {
+    if (!linkInput) return
+
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const selectedText = range.toString()
+      
+      if (selectedText) {
+        const link = document.createElement('a')
+        link.href = linkInput
+        link.textContent = selectedText
+        link.className = 'text-green-600 underline'
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        
+        range.deleteContents()
+        range.insertNode(link)
+        
+        selection.removeAllRanges()
+      }
+    }
+    setLinkInput('')
+    setIsLinkInputVisible(false)
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML)
     }
   }
 
@@ -42,9 +93,9 @@ export function RichTextEditor({
     document.execCommand('insertText', false, text)
   }
 
-  // Parse value to set innerHTML safely
-  const setEditorHTML = () => {
-    if (editorRef.current && value) {
+  const handleFocus = () => {
+    setIsInitialized(true)
+    if (editorRef.current && value && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value
     }
   }
@@ -55,24 +106,24 @@ export function RichTextEditor({
       <div className="flex gap-1 border border-slate-300 rounded-t-lg bg-slate-50 p-1">
         <button
           type="button"
-          onClick={() => execCommand('bold')}
-          className="p-1.5 rounded hover:bg-slate-200 font-bold text-slate-700"
+          onClick={() => applyFormat('strong')}
+          className="px-3 py-1 rounded hover:bg-slate-200 font-bold text-slate-700 text-sm"
           title="Negrita"
         >
           B
         </button>
         <button
           type="button"
-          onClick={() => execCommand('italic')}
-          className="p-1.5 rounded hover:bg-slate-200 italic text-slate-700"
+          onClick={() => applyFormat('em')}
+          className="px-3 py-1 rounded hover:bg-slate-200 italic text-slate-700 text-sm"
           title="Cursiva"
         >
           I
         </button>
         <button
           type="button"
-          onClick={() => execCommand('underline')}
-          className="p-1.5 rounded hover:bg-slate-200 underline text-slate-700"
+          onClick={() => applyFormat('u')}
+          className="px-3 py-1 rounded hover:bg-slate-200 underline text-slate-700 text-sm"
           title="Subrayado"
         >
           U
@@ -81,20 +132,12 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => setIsLinkInputVisible(!isLinkInputVisible)}
-          className={`p-1.5 rounded hover:bg-slate-200 text-slate-700 ${
+          className={`px-3 py-1 rounded hover:bg-slate-200 text-slate-700 text-sm ${
             isLinkInputVisible ? 'bg-slate-200' : ''
           }`}
           title="Link"
         >
-          🔗
-        </button>
-        <button
-          type="button"
-          onClick={() => execCommand('insertUnorderedList')}
-          className="p-1.5 rounded hover:bg-slate-200 text-slate-700"
-          title="Lista con viñetas"
-        >
-          •
+          🔗 Link
         </button>
       </div>
 
@@ -106,14 +149,15 @@ export function RichTextEditor({
             value={linkInput}
             onChange={(e) => setLinkInput(e.target.value)}
             placeholder="https://..."
-            className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+            className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
           />
           <button
             type="button"
-            onClick={handleLinkInsert}
-            className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            onClick={insertLink}
+            disabled={!linkInput}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
           >
-            Agregar
+            Insertar
           </button>
           <button
             type="button"
@@ -121,7 +165,7 @@ export function RichTextEditor({
               setIsLinkInputVisible(false)
               setLinkInput('')
             }}
-            className="px-3 py-1 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300"
+            className="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300"
           >
             Cancelar
           </button>
@@ -134,8 +178,8 @@ export function RichTextEditor({
         contentEditable
         onInput={handleInput}
         onPaste={handlePaste}
-        onFocus={setEditorHTML}
-        className="w-full rounded-b-lg border border-slate-300 border-t-0 px-3 py-2 text-base text-slate-900 min-h-[100px] focus:border-green-500 focus:outline-none prose prose-sm max-w-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)]"
+        onFocus={handleFocus}
+        className="w-full rounded-b-lg border border-slate-300 border-t-0 px-3 py-2 text-base text-slate-900 min-h-[120px] focus:border-green-500 focus:outline-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)]"
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />

@@ -108,7 +108,10 @@ const { data: teams = [] } = useQuery({
                   <NoticeBadge type={notice.type} />
                   <div>
                     <h3 className="font-bold text-slate-800">{notice.title}</h3>
-                    <p className="text-sm text-slate-600">{notice.message}</p>
+                    <p 
+                      className="text-sm text-slate-600" 
+                      dangerouslySetInnerHTML={{ __html: notice.message }} 
+                    />
                   </div>
                 </div>
                 {notice.link && (
