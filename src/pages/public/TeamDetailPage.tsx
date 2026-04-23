@@ -2,8 +2,9 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
-import { getTeamById, getPlayers, getMatchesByTeam, getGoalsByTeam } from '../../services/database'
-import type { Player, Match, Goal } from '../../types/domain'
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
+import { getTeamById, getPlayers, getMatchesByTeam, getGoalsByTeam, getCardsByTeam } from '../../services/database'
+import type { Player, Match, Goal, Card as CardType } from '../../types/domain'
 
 interface TeamStats {
   played: number
@@ -44,6 +45,12 @@ export function TeamDetailPage() {
   const { data: goals = [] } = useQuery({
     queryKey: ['teamGoals', teamId],
     queryFn: () => getGoalsByTeam(teamId!),
+    enabled: !!teamId,
+  })
+
+  const { data: cards = [] } = useQuery({
+    queryKey: ['teamCards', teamId],
+    queryFn: () => getCardsByTeam(teamId!),
     enabled: !!teamId,
   })
 
@@ -259,6 +266,51 @@ export function TeamDetailPage() {
               })}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Player Stats Table */}
+      <Card>
+        <CardHeader>
+          <span className="font-medium">Estadísticas de Jugadores</span>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Jugador</TableHeader>
+                <TableHeader className="text-center">Goles</TableHeader>
+                <TableHeader className="text-center">Amarillas</TableHeader>
+                <TableHeader className="text-center">Rojas</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {players.map((player: Player) => {
+                const playerGoals = goals.filter((g: Goal) => g.playerId === player.id).reduce((sum: number, g: Goal) => sum + g.quantity, 0)
+                const playerYellows = cards.filter((c: CardType) => c.playerId === player.id && c.type === 'amarilla').length
+                const playerReds = cards.filter((c: CardType) => c.playerId === player.id && c.type === 'roja').length
+                return (
+                  <TableRow key={player.id}>
+                    <TableCell className="font-medium">
+                      {player.firstName} {player.lastName}
+                      {player.shirtNumber && <span className="ml-2 text-slate-400">#{player.shirtNumber}</span>}
+                    </TableCell>
+                    <TableCell className="text-center font-bold text-green-600">{playerGoals}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${playerYellows > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-50 text-slate-400'}`}>
+                        {playerYellows}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${playerReds > 0 ? 'bg-red-100 text-red-800' : 'bg-slate-50 text-slate-400'}`}>
+                        {playerReds}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </section>

@@ -39,7 +39,6 @@ export interface NavigationLink {
 export const publicNavigationLinks: NavigationLink[] = [
   { to: appRoutes.home, label: 'Inicio', end: true },
   { to: appRoutes.fixture, label: 'Fixture' },
-  { to: appRoutes.results, label: 'Resultados' },
   { to: appRoutes.standings, label: 'Tabla' },
   { to: appRoutes.teams, label: 'Equipos' },
   { to: appRoutes.scorers, label: 'Goleadores' },

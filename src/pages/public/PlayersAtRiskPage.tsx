@@ -10,6 +10,7 @@ interface PlayerAtRisk {
   team: Team
   yellowCards: number
   yellowCardsInLastMatch: number
+  matchDayNumber: number | null
   status: 'normal' | 'observation' | 'at_limit'
 }
 
@@ -147,7 +148,7 @@ export function PlayersAtRiskPage() {
                     <TableRow>
                       <TableHeader>Jugador</TableHeader>
                       <TableHeader>Equipo</TableHeader>
-                      <TableHeader className="text-center">En Última Fecha</TableHeader>
+                      <TableHeader>Fecha</TableHeader>
                       <TableHeader className="text-center">Total</TableHeader>
                       <TableHeader>Estado</TableHeader>
                     </TableRow>
@@ -175,7 +176,7 @@ export function PlayersAtRiskPage() {
                           <TableCell className="font-medium">{p.team.name}</TableCell>
                           <TableCell className="text-center">
                             <span className="inline-flex rounded-full bg-yellow-100 px-2 py-1 text-xs font-bold text-yellow-700">
-                              {p.yellowCardsInLastMatch}
+                              {p.matchDayNumber ? `Fecha ${p.matchDayNumber}` : '-'}
                             </span>
                           </TableCell>
                           <TableCell className="text-center text-slate-500">{p.yellowCards}</TableCell>

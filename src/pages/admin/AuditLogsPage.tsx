@@ -117,7 +117,7 @@ export function AuditLogsPage() {
                       <td className="px-3 py-2 whitespace-nowrap">{l.table_name}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{l.action}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-slate-300">{l.record_id}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-slate-300">{l.admin_user_id || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-300">{l.admin_user_name || l.admin_user_id || '-'}</td>
                       <td className="px-3 py-2 min-w-[20rem]">{l.description || '-'}</td>
                     </tr>
                   ))}
