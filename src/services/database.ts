@@ -26,6 +26,7 @@ import type {
   Match, 
   Goal, 
   Card, 
+  CardType,
   Sanction, 
   Document,
   AdminUser,
@@ -994,6 +995,31 @@ function normalizeMatchFromDB(data: Record<string, unknown>[]): Match[] {
   }))
 }
 
+// Normalizar Goal de DB (snake_case) a App (camelCase)
+function normalizeGoalFromDB(data: Record<string, unknown>[]): Goal[] {
+  return (data || []).map((row) => ({
+    id: row.id as string,
+    matchId: row.match_id as string,
+    playerId: row.player_id as string,
+    teamId: row.team_id as string,
+    quantity: row.quantity as number,
+    createdAt: row.created_at as string,
+  }))
+}
+
+// Normalizar Card de DB (snake_case) a App (camelCase)
+function normalizeCardFromDB(data: Record<string, unknown>[]): Card[] {
+  return (data || []).map((row) => ({
+    id: row.id as string,
+    matchId: row.match_id as string,
+    playerId: row.player_id as string,
+    teamId: row.team_id as string,
+    type: row.type as CardType,
+    minute: row.minute as number | null,
+    createdAt: row.created_at as string,
+  }))
+}
+
 export async function createMatch(match: Partial<Match>): Promise<Match> {
   const supabase = getSupabaseClient()
   const matchDB = normalizeMatchToDB(match)
@@ -1095,7 +1121,20 @@ export async function getGoalsByTeam(teamId: string): Promise<Goal[]> {
     .eq('team_id', teamId)
   
   if (error) throw error
-  return data || []
+  
+  return normalizeGoalFromDB(data || [])
+}
+
+export async function getCardsByTeam(teamId: string): Promise<Card[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from('card')
+    .select('*')
+    .eq('team_id', teamId)
+  
+  if (error) throw error
+  
+  return normalizeCardFromDB(data || [])
 }
 
 export async function createGoal(goal: Partial<Goal>): Promise<Goal> {
@@ -2010,7 +2049,8 @@ export async function getMatchesByTeam(teamId: string): Promise<Match[]> {
     .order('created_at', { ascending: false })
   
   if (error) throw error
-  return data || []
+  
+  return normalizeMatchFromDB(data || [])
 }
 
 // Cards
@@ -2166,7 +2206,7 @@ export async function getYellowCardsByPlayer(tournamentId: string): Promise<Arra
 }
 
 // Get yellow cards from the LAST played match day where each player's team participated
-export async function getYellowCardsInLastMatchDay(tournamentId: string): Promise<Array<{ playerId: string; count: number; matchId: string }>> {
+export async function getYellowCardsInLastMatchDay(tournamentId: string): Promise<Array<{ playerId: string; count: number; matchId: string; matchDayNumber: number }>> {
   if (env.demoMode) {
     const { demoCards, demoMatchDays } = await import('../lib/demoData')
     // Find last played match day
@@ -2184,7 +2224,7 @@ export async function getYellowCardsInLastMatchDay(tournamentId: string): Promis
       lastPlayedMatchIds.includes(c.matchId) && c.type === 'amarilla'
     )
     
-    return lastMatchDayCards.map(c => ({ playerId: c.playerId, count: 1, matchId: c.matchId }))
+    return lastMatchDayCards.map(c => ({ playerId: c.playerId, count: 1, matchId: c.matchId, matchDayNumber: lastPlayedMatchDay.number as number }))
   }
   
   const supabase = getSupabaseClient()
@@ -2202,11 +2242,12 @@ export async function getYellowCardsInLastMatchDay(tournamentId: string): Promis
     .from('match_day')
     .select('id, number, free_team_id')
     .eq('tournament_id', tournamentId)
-    .order('number', { ascending: false })
+    .order('number', { ascending: true }) // Ascending: desde la primera fecha
   
   if (!matchDays || matchDays.length === 0) return []
   
   // Para cada equipo, encontrar la última fecha donde participó (no quedó libre)
+  // Iterar desde la primera fecha hacia adelante sobrescribe con la más reciente
   const teamLastPlayedDate = new Map<string, { matchDayId: string; matchIds: string[] }>()
   
   for (const md of matchDays) {
@@ -2214,19 +2255,17 @@ export async function getYellowCardsInLastMatchDay(tournamentId: string): Promis
       .from('match')
       .select('id, home_team_id, away_team_id')
       .eq('match_day_id', md.id)
-      .eq('status', 'jugado')
-    
+.eq('status', 'jugado')
+     
     if (!matches) continue
     
     for (const team of teams) {
-      // Si el equipo ya tiene fecha registrada, no sobreescribir
-      if (teamLastPlayedDate.has(team.id)) continue
-      
       // Verificar si el equipo participó (no quedó libre)
       const participated = matches.some(m => 
         m.home_team_id === team.id || m.away_team_id === team.id
       )
       
+      // Sobrescribir siempre - nos quedamos con la última fecha más reciente
       if (participated && md.free_team_id !== team.id) {
         const matchIds = matches
           .filter(m => m.home_team_id === team.id || m.away_team_id === team.id)
@@ -2236,10 +2275,14 @@ export async function getYellowCardsInLastMatchDay(tournamentId: string): Promis
     }
   }
   
-  // Recolectar todas las tarjetas de las últimas fechas jugadas de cada equipo
-  const allCards: Array<{ playerId: string; count: number; matchId: string }> = []
+// Recolectar todas las tarjetas de las últimas fechas jugadas de cada equipo
+  const allCards: Array<{ playerId: string; count: number; matchId: string; matchDayNumber: number }> = []
+  
+  // Map match_day_id to number for easy lookup
+  const matchDayIdToNumber = new Map(matchDays.map(md => [md.id, md.number]))
   
   for (const [, data] of teamLastPlayedDate) {
+    const matchDayNumber = matchDayIdToNumber.get(data.matchDayId) || 0
     const { data: cards } = await supabase
       .from('card')
       .select('player_id, match_id, team_id')
@@ -2247,14 +2290,17 @@ export async function getYellowCardsInLastMatchDay(tournamentId: string): Promis
       .eq('type', 'amarilla')
     
     if (cards) {
-      allCards.push(...cards.map(c => ({ playerId: c.player_id, count: 1, matchId: c.match_id })))
+      allCards.push(...cards.map(c => ({ 
+        playerId: c.player_id, 
+        count: 1, 
+        matchId: c.match_id,
+        matchDayNumber 
+      })))
     }
   }
   
   return allCards
 }
-
-// Sanctions - Admin (muestra vigentes Y cumplidas)
 export async function getActiveSanctions(): Promise<Sanction[]> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
@@ -2563,6 +2609,7 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
   team: Team; 
   yellowCards: number; 
   yellowCardsInLastMatch: number;
+  matchDayNumber: number | null;
   status: 'normal' | 'observation' | 'at_limit'
 }>> {
   // En modo demo
@@ -2602,6 +2649,7 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
         team: team!,
         yellowCards: yellowCount,
         yellowCardsInLastMatch: yellowInLast,
+        matchDayNumber: null,
         status,
       }
     }).filter((p): p is NonNullable<typeof p> => p !== null).sort((a, b) => (b?.yellowCards ?? 0) - (a?.yellowCards ?? 0))
@@ -2611,6 +2659,7 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
       team: Team; 
       yellowCards: number;
       yellowCardsInLastMatch: number;
+      matchDayNumber: number | null;
       status: 'normal' | 'observation' | 'at_limit'
     }>
   }
@@ -2635,6 +2684,9 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
   // Get yellow cards from last match day
   const yellowCardsInLastMatch = await getYellowCardsInLastMatchDay(tournamentId)
   
+  // Create map from playerId to matchDayNumber
+  const playerMatchDayNumber = new Map(yellowCardsInLastMatch.map(c => [c.playerId, c.matchDayNumber]))
+  
   // Get players with their teams (filtered by tournament teams)
   const { data: players } = await supabase
     .from('player')
@@ -2653,7 +2705,7 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
   const suspendedPlayerIds = new Set(sanctions?.map(s => s.player_id) || [])
   
   // Build result - NO incluye suspendidos (van a Sanciones)
-  const result: Array<{ player: Player; team: Team; yellowCards: number; yellowCardsInLastMatch: number; status: 'normal' | 'observation' | 'at_limit' }> = []
+  const result: Array<{ player: Player; team: Team; yellowCards: number; yellowCardsInLastMatch: number; matchDayNumber: number | null; status: 'normal' | 'observation' | 'at_limit' }> = []
   
   players.forEach((player) => {
     const yellowCount = yellowCards.find(y => y.playerId === player.id)?.count || 0
@@ -2695,6 +2747,7 @@ export async function getPlayersNearSuspension(tournamentId: string, threshold: 
       team: player.team,
       yellowCards: yellowCount,
       yellowCardsInLastMatch: yellowInLast,
+      matchDayNumber: playerMatchDayNumber.get(player.id) || null,
       status,
     })
   })
@@ -2921,6 +2974,7 @@ export async function createAuditLog(log: {
 export interface AuditLog {
   id: string
   admin_user_id: string | null
+  admin_user_name: string | null
   table_name: string
   record_id: string
   action: 'create' | 'update' | 'delete'
@@ -2937,24 +2991,29 @@ export async function getAuditLogs(options?: {
   if (env.demoMode) return []
   
   const supabase = getSupabaseClient()
-  let query = supabase
+  
+  // Join con admin_user para obtener nombre
+  const { data, error } = await supabase
     .from('audit_log')
-    .select('*')
+    .select('*, admin_user:admin_user_id(name, email)')
     .order('created_at', { ascending: false })
-  
-  if (options?.tableName) {
-    query = query.eq('table_name', options.tableName)
-  }
-  if (options?.limit) {
-    query = query.limit(options.limit)
-  } else {
-    query = query.limit(100)
-  }
-  
-  const { data, error } = await query
+    .limit(options?.limit || 100)
   
   if (error) throw error
-  return data || []
+  
+  if (!data) return []
+  
+  // Filtrar por tableName si aplica
+  let logs = data
+  if (options?.tableName) {
+    logs = data.filter(l => l.table_name === options.tableName)
+  }
+  
+  // Mapear para incluir nombre de usuario
+  return logs.map(l => ({
+    ...l,
+    admin_user_name: l.admin_user?.name || l.admin_user?.email || null,
+  }))
 }
 
 // Normalizar News de DB (snake_case) a App (camelCase)
