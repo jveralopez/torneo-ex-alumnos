@@ -2205,6 +2205,111 @@ export async function getYellowCardsByPlayer(tournamentId: string): Promise<Arra
   return Array.from(countMap.entries()).map(([playerId, count]) => ({ playerId, count }))
 }
 
+// Get all cards (yellow and red) with player and team info
+export async function getAllCards(tournamentId: string): Promise<Array<{
+  playerId: string
+  playerName: string
+  teamId: string
+  teamName: string
+  yellowCount: number
+  redCount: number
+  details: Array<{ type: 'amarilla' | 'roja'; matchDayNumber: number }>
+}>> {
+  if (env.demoMode) return []
+  
+  const supabase = getSupabaseClient()
+  
+  // Get teams for this tournament
+  const { data: teams, error: teamsError } = await supabase
+    .from('team')
+    .select('id, name')
+    .eq('tournament_id', tournamentId)
+    .eq('active', true)
+  
+  if (teamsError || !teams || teams.length === 0) return []
+  
+  const teamIds = teams.map(t => t.id)
+  const teamIdToName = new Map(teams.map(t => [t.id, t.name]))
+  
+  // Get match days for the tournament
+  const { data: matchDays } = await supabase
+    .from('match_day')
+    .select('id, number')
+    .eq('tournament_id', tournamentId)
+    .order('number', { ascending: true })
+  
+  const matchDayIdToNumber = new Map((matchDays || []).map(md => [md.id, md.number]))
+  
+  // Get players for these teams
+  const { data: players } = await supabase
+    .from('player')
+    .select('id, first_name, last_name, team_id')
+    .in('team_id', teamIds)
+    .eq('active', true)
+  
+  if (!players || players.length === 0) return []
+  
+  const playerIdToName = new Map(players.map(p => [
+    p.id,
+    `${p.first_name} ${p.last_name}`
+  ]))
+  const playerIdToTeamId = new Map(players.map(p => [p.id, p.team_id]))
+  
+  // Get all cards for these teams
+  const { data: cards } = await supabase
+    .from('card')
+    .select('player_id, team_id, type, match_id')
+    .in('team_id', teamIds)
+  
+  if (!cards || cards.length === 0) return []
+  
+  // Get match_day for each card's match
+  const matchIds = [...new Set(cards.map(c => c.match_id))]
+  const { data: matches } = await supabase
+    .from('match')
+    .select('id, match_day_id')
+    .in('id', matchIds)
+  
+  const matchIdToMatchDayId = new Map((matches || []).map(m => [m.id, m.match_day_id]))
+  
+  // Group cards by player
+  const playerCards = new Map<string, Array<{ type: 'amarilla' | 'roja'; matchDayNumber: number }>>()
+  
+  for (const card of cards) {
+    const playerId = card.player_id
+    const matchId = card.match_id
+    const matchDayId = matchIdToMatchDayId.get(matchId)
+    const matchDayNumber = matchDayId ? matchDayIdToNumber.get(matchDayId) || 0 : 0
+    
+    if (!playerCards.has(playerId)) {
+      playerCards.set(playerId, [])
+    }
+    playerCards.get(playerId)!.push({
+      type: card.type as 'amarilla' | 'roja',
+      matchDayNumber
+    })
+  }
+  
+  // Build result
+  const result = Array.from(playerCards.entries()).map(([playerId, cardDetails]) => {
+    const yellowCount = cardDetails.filter(c => c.type === 'amarilla').length
+    const redCount = cardDetails.filter(c => c.type === 'roja').length
+    
+    return {
+      playerId,
+      playerName: playerIdToName.get(playerId) || 'Unknown',
+      teamId: playerIdToTeamId.get(playerId) || '',
+      teamName: teamIdToName.get(playerIdToTeamId.get(playerId) || '') || 'Unknown',
+      yellowCount,
+      redCount,
+      details: cardDetails.sort((a, b) => a.matchDayNumber - b.matchDayNumber)
+    }
+  })
+  
+  // Sort by total cards descending (más tarjetas primero)
+  return result.sort((a, b) => (b.yellowCount + b.redCount) - (a.yellowCount + a.redCount))
+}
+
 // Get yellow cards from the LAST played match day where each player's team participated
 export async function getYellowCardsInLastMatchDay(tournamentId: string): Promise<Array<{ playerId: string; count: number; matchId: string; matchDayNumber: number }>> {
   if (env.demoMode) {

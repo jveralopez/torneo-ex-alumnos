@@ -30,6 +30,7 @@ import { RegulationPage } from '../pages/public/RegulationPage'
 import { StatisticsPage } from '../pages/public/StatisticsPage'
 import { PlayersAtRiskPage } from '../pages/public/PlayersAtRiskPage'
 import { PublicSanctionsPage } from '../pages/public/PublicSanctionsPage'
+import { CardsPage } from '../pages/public/CardsPage'
 import { UiPreviewPage } from '../pages/public/UiPreviewPage'
 import { appRoutes } from '../utils/routes'
 
@@ -47,6 +48,7 @@ export function AppRouter() {
         <Route path={appRoutes.regulation} element={<RegulationPage />} />
         <Route path={appRoutes.statistics} element={<StatisticsPage />} />
         <Route path={appRoutes.playersAtRisk} element={<PlayersAtRiskPage />} />
+        <Route path={appRoutes.cards} element={<CardsPage />} />
         <Route path={appRoutes.publicSanctions} element={<PublicSanctionsPage />} />
         <Route path="/ui-preview" element={<UiPreviewPage />} />
       </Route>
