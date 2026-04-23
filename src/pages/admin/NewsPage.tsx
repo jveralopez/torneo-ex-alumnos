@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/ui'
 import { Input, Select } from '../../components/ui'
+import { RichTextEditor } from '../../components/ui/RichTextEditor'
 import { getActiveNews, createNews, updateNews, deleteNews } from '../../services/database'
 import { useTournamentId } from '../../hooks/useTournament'
 import type { News, NewsType } from '../../types/domain'
@@ -257,13 +258,10 @@ function NewsForm({
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Mensaje *
             </label>
-            <textarea
+            <RichTextEditor
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              required
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-900 focus:border-green-500 focus:outline-none"
-              placeholder="Ej: Fecha 5 programada para este domingo"
+              onChange={setMessage}
+              placeholder="Escribe el mensaje aquí..."
             />
           </div>
 
