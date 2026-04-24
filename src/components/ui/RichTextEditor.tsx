@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 
 interface RichTextEditorProps {
   value: string
@@ -16,7 +16,10 @@ export function RichTextEditor({
   const [linkInput, setLinkInput] = useState('')
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize content when value changes and not focused
+  // Store selection to restore it after button click
+  const savedSelectionRef = useRef<Selection | null>(null)
+
+  // Initialize content when value changes
   useEffect(() => {
     if (!isInitialized && editorRef.current && value) {
       editorRef.current.innerHTML = value
@@ -24,40 +27,42 @@ export function RichTextEditor({
     }
   }, [value, isInitialized])
 
-  const applyFormat = (tag: string) => {
+  // Save current selection on mouse down
+  const saveSelection = useCallback(() => {
     const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
+    if (selection && selection.rangeCount > 0 && selection.toString().length > 0) {
+      savedSelectionRef.current = selection
+    }
+  }, [])
 
-    const range = selection.getRangeAt(0)
-    const selectedText = range.toString()
-
-    if (!selectedText) return
-
-    const wrapper = document.createElement(tag)
-    wrapper.textContent = selectedText
-
-    range.deleteContents()
-    range.insertNode(wrapper)
-
-    // Clear selection and move cursor after
-    selection.removeAllRanges()
-    const newRange = document.createRange()
-    newRange.selectNodeContents(wrapper)
-    newRange.collapse(false)
-    selection.addRange(newRange)
-
+  const applyFormat = useCallback((command: string) => {
+    // Focus the editor first
+    editorRef.current?.focus()
+    
+    // Use execCommand - it preserves selection automatically in most browsers
+    document.execCommand(command, false, '')
+    
     // Trigger onChange
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)
     }
-  }
+  }, [onChange])
 
-  const insertLink = () => {
+  const insertLink = useCallback(() => {
     if (!linkInput) return
 
+    editorRef.current?.focus()
+    
     const selection = window.getSelection()
+    let range: Range | null = null
+    
     if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
+      range = selection.getRangeAt(0)
+    } else if (savedSelectionRef.current && savedSelectionRef.current.rangeCount > 0) {
+      range = savedSelectionRef.current.getRangeAt(0)
+    }
+    
+    if (range) {
       const selectedText = range.toString()
       
       if (selectedText) {
@@ -70,16 +75,24 @@ export function RichTextEditor({
         
         range.deleteContents()
         range.insertNode(link)
+      } else {
+        const link = document.createElement('a')
+        link.href = linkInput
+        link.textContent = linkInput
+        link.className = 'text-green-600 underline'
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
         
-        selection.removeAllRanges()
+        range.insertNode(link)
       }
     }
+    
     setLinkInput('')
     setIsLinkInputVisible(false)
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)
     }
-  }
+  }, [linkInput, onChange])
 
   const handleInput = () => {
     if (editorRef.current) {
@@ -95,9 +108,6 @@ export function RichTextEditor({
 
   const handleFocus = () => {
     setIsInitialized(true)
-    if (editorRef.current && value && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value
-    }
   }
 
   return (
@@ -106,7 +116,8 @@ export function RichTextEditor({
       <div className="flex gap-1 border border-slate-300 rounded-t-lg bg-slate-50 p-1">
         <button
           type="button"
-          onClick={() => applyFormat('strong')}
+          onClick={() => applyFormat('bold')}
+          onMouseDown={saveSelection}
           className="px-3 py-1 rounded hover:bg-slate-200 font-bold text-slate-700 text-sm"
           title="Negrita"
         >
@@ -114,7 +125,8 @@ export function RichTextEditor({
         </button>
         <button
           type="button"
-          onClick={() => applyFormat('em')}
+          onClick={() => applyFormat('italic')}
+          onMouseDown={saveSelection}
           className="px-3 py-1 rounded hover:bg-slate-200 italic text-slate-700 text-sm"
           title="Cursiva"
         >
@@ -122,7 +134,8 @@ export function RichTextEditor({
         </button>
         <button
           type="button"
-          onClick={() => applyFormat('u')}
+          onClick={() => applyFormat('underline')}
+          onMouseDown={saveSelection}
           className="px-3 py-1 rounded hover:bg-slate-200 underline text-slate-700 text-sm"
           title="Subrayado"
         >
@@ -132,6 +145,7 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => setIsLinkInputVisible(!isLinkInputVisible)}
+          onMouseDown={saveSelection}
           className={`px-3 py-1 rounded hover:bg-slate-200 text-slate-700 text-sm ${
             isLinkInputVisible ? 'bg-slate-200' : ''
           }`}
